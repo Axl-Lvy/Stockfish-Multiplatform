@@ -6,7 +6,9 @@ import io.kotest.matchers.shouldBe
 import kotlin.test.Test
 import kotlinx.coroutines.test.runTest
 
-private fun createFakeEngine(vararg initResponses: String): Pair<StockfishEngine, FakeRawEngine> {
+private suspend fun createFakeEngine(
+  vararg initResponses: String
+): Pair<StockfishEngine, FakeRawEngine> {
   val raw = FakeRawEngine()
   raw.enqueue(*initResponses, "uciok")
   val engine = StockfishEngine(raw)

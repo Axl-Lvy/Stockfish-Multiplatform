@@ -8,9 +8,6 @@ internal interface RawEngine : AutoCloseable {
   /** Send a string to the engine's stdin. */
   fun send(command: String)
 
-  /**
-   * Read a line from the engine's stdout. Returns an empty string if no output is available yet
-   * (non-blocking poll).
-   */
-  fun readLine(): String
+  /** Read a line from the engine's stdout. Suspends until a line is available. */
+  suspend fun readLine(): String
 }

@@ -1,22 +1,26 @@
 package io.github.axl_lvy.stockfish_multiplatform
 
 internal abstract class JniStockfishEngine : RawEngine {
-  private external fun startEngine()
+  private external fun startEngine(nnuePath: String?)
 
   private external fun nativeSendCommand(cmd: String)
 
   private external fun readOutput(): String
 
-  protected abstract fun loadNativeLibrary()
+  private external fun destroyEngine()
+
+  protected abstract fun loadNativeLibrary(): String?
 
   fun init() {
-    loadNativeLibrary()
-    startEngine()
+    val nnuePath = loadNativeLibrary()
+    startEngine(nnuePath)
   }
 
   override fun send(command: String) = nativeSendCommand(command)
 
-  override fun readLine(): String = readOutput()
+  override suspend fun readLine(): String = readOutput()
 
-  override fun close() {}
+  override fun close() {
+    destroyEngine()
+  }
 }

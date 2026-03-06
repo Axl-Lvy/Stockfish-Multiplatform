@@ -1,7 +1,7 @@
 package io.github.axl_lvy.stockfish_multiplatform
 
-actual fun createStockfish(): StockfishEngine {
+actual suspend fun createStockfish(): StockfishEngine {
   val raw = WasmRawEngine()
-  raw.init()
-  return StockfishEngine(raw)
+  raw.start()
+  return StockfishEngine(raw).also { it.init() }
 }

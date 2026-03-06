@@ -49,13 +49,7 @@ kotlin {
               }
           }
       }
-      testTask {
-        useKarma {
-          useFirefox()
-          useChrome()
-          useSafari()
-        }
-      }
+      testTask { useKarma { useFirefox() } }
     }
     binaries.executable()
   }
@@ -75,8 +69,6 @@ kotlin {
     }
 
     androidMain.dependencies { implementation(libs.android.startup) }
-
-    wasmJsMain.dependencies { implementation(npm("stockfish.wasm", "0.10.0")) }
   }
 }
 
@@ -116,7 +108,7 @@ mavenPublishing {
 }
 
 // Base URL for Stockfish releases
-val stockfishBaseUrl = "https://github.com/official-stockfish/Stockfish/releases/download/sf_17.1"
+val stockfishBaseUrl = "https://github.com/official-stockfish/Stockfish/releases/download/sf_18"
 
 // Create resource directories
 tasks.register("createResourceDirectories") {
@@ -133,14 +125,14 @@ tasks.register("createResourceDirectories") {
 tasks.register<Download>("downloadStockfishSource") {
   description = "Download Stockfish source code (used by both Android NDK and JVM CMake builds)"
   group = "Resources"
-  src("https://github.com/official-stockfish/Stockfish/archive/refs/tags/sf_17.1.tar.gz")
+  src("https://github.com/official-stockfish/Stockfish/archive/refs/tags/sf_18.tar.gz")
   dest(layout.buildDirectory.file("stockfish-src.tar.gz"))
   onlyIfModified(true)
   doLast {
     copy {
       from(tarTree(resources.gzip(layout.buildDirectory.file("stockfish-src.tar.gz")))) {
-        include("Stockfish-sf_17.1/src/**")
-        eachFile { path = path.replaceFirst("Stockfish-sf_17.1/src/", "stockfish/") }
+        include("Stockfish-sf_18/src/**")
+        eachFile { path = path.replaceFirst("Stockfish-sf_18/src/", "stockfish/") }
         includeEmptyDirs = false
       }
       into(layout.projectDirectory.dir("cpp"))
@@ -148,11 +140,36 @@ tasks.register<Download>("downloadStockfishSource") {
   }
 }
 
+// Download NNUE network files required by the Stockfish engine
+tasks.register<Download>("downloadNnueBig") {
+  description = "Download Stockfish big NNUE network"
+  group = "Resources"
+  src("https://tests.stockfishchess.org/api/nn/nn-c288c895ea92.nnue")
+  dest(layout.projectDirectory.file("src/jvmMain/resources/stockfish/nn-c288c895ea92.nnue"))
+  onlyIfModified(true)
+  overwrite(false)
+}
+
+tasks.register<Download>("downloadNnueSmall") {
+  description = "Download Stockfish small NNUE network"
+  group = "Resources"
+  src("https://tests.stockfishchess.org/api/nn/nn-37f18f62d772.nnue")
+  dest(layout.projectDirectory.file("src/jvmMain/resources/stockfish/nn-37f18f62d772.nnue"))
+  onlyIfModified(true)
+  overwrite(false)
+}
+
+tasks.register("downloadNnueNetworks") {
+  description = "Download all NNUE network files"
+  group = "Resources"
+  dependsOn("downloadNnueBig", "downloadNnueSmall")
+}
+
 // Compile JVM native library using CMake on the host machine
 tasks.register("compileJvmNative") {
   description = "Compile JVM native library using CMake on the host machine"
   group = "Resources"
-  dependsOn("downloadStockfishSource")
+  dependsOn("downloadStockfishSource", "downloadNnueNetworks")
   doLast {
     val buildDir = layout.buildDirectory.dir("jvm-native").get().asFile
     buildDir.mkdirs()
@@ -217,36 +234,30 @@ tasks.register<Download>("downloadStockfishIOS") {
   }
 }
 
-// WASM - Download from npm package
+// WASM - Download Stockfish.js lite multithreaded from npm package
 tasks.register<Download>("downloadStockfishWasmPackage") {
-  description = "Download Stockfish binary for Wasm"
+  description = "Download Stockfish.js npm package"
   group = "Resources"
-  dependsOn("createResourceDirectories")
-  src("https://registry.npmjs.org/stockfish.wasm/-/stockfish.wasm-0.10.0.tgz")
-  dest(layout.buildDirectory.file("stockfish-wasm-package.tgz"))
+  src("https://registry.npmjs.org/stockfish/-/stockfish-18.0.5.tgz")
+  dest(layout.buildDirectory.file("stockfish-js-package.tgz"))
   onlyIfModified(true)
 }
 
 tasks.register("extractStockfishWasm") {
-  description = "Extract Stockfish Wasm"
+  description = "Extract Stockfish.js lite multithreaded files"
   group = "Resources"
-  dependsOn("downloadStockfishWasmPackage")
+  dependsOn("downloadStockfishWasmPackage", "createResourceDirectories")
   doLast {
-    // Extract from npm package
     copy {
-      from(tarTree(resources.gzip(layout.buildDirectory.file("stockfish-wasm-package.tgz"))))
-      into(layout.buildDirectory.dir("stockfish-wasm-extracted"))
+      from(tarTree(resources.gzip(layout.buildDirectory.file("stockfish-js-package.tgz"))))
+      into(layout.buildDirectory.dir("stockfish-js-extracted"))
     }
-
-    // Copy required files to resources directory
     copy {
-      from(layout.buildDirectory.file("stockfish-wasm-extracted/package/stockfish.wasm"))
-      from(layout.buildDirectory.file("stockfish-wasm-extracted/package/stockfish.js"))
-      from(layout.buildDirectory.file("stockfish-wasm-extracted/package/stockfish.worker.js"))
+      from(layout.buildDirectory.file("stockfish-js-extracted/package/bin/stockfish-18-lite.js"))
+      from(layout.buildDirectory.file("stockfish-js-extracted/package/bin/stockfish-18-lite.wasm"))
       into(layout.projectDirectory.dir("src/wasmJsMain/resources/stockfish"))
     }
-    delete(layout.buildDirectory.file("stockfish-wasm-extracted.tgz"))
-    delete(layout.buildDirectory.dir("stockfish-wasm-extracted"))
+    delete(layout.buildDirectory.dir("stockfish-js-extracted"))
   }
 }
 
@@ -270,7 +281,31 @@ tasks.named("clean") {
     delete(layout.projectDirectory.dir("cpp/stockfish"))
     delete(layout.projectDirectory.dir("src/androidHostTest/jniLibs"))
     delete(layout.projectDirectory.dir("src/androidMain/jniLibs"))
+    delete(layout.projectDirectory.dir("src/androidMain/assets/stockfish"))
+    delete(layout.projectDirectory.dir("src/androidHostTest/resources/stockfish"))
     logger.lifecycle("Cleaned Stockfish resources and source directories")
+  }
+}
+
+// Copy NNUE files to Android assets and host test resources
+tasks.register("copyNnueToAndroid") {
+  description = "Copy NNUE network files to Android assets and host test resources"
+  group = "Resources"
+  dependsOn("downloadNnueNetworks")
+  doLast {
+    val nnueFiles = listOf("nn-c288c895ea92.nnue", "nn-37f18f62d772.nnue")
+    val dirs =
+      listOf(
+        layout.projectDirectory.dir("src/androidMain/assets/stockfish").asFile,
+        layout.projectDirectory.dir("src/androidHostTest/resources/stockfish").asFile,
+      )
+    for (dir in dirs) {
+      dir.mkdirs()
+      for (nnue in nnueFiles) {
+        val src = layout.projectDirectory.file("src/jvmMain/resources/stockfish/$nnue").asFile
+        if (src.exists()) src.copyTo(file("${dir.absolutePath}/$nnue"), overwrite = true)
+      }
+    }
   }
 }
 
@@ -278,7 +313,7 @@ tasks.named("clean") {
 tasks.register("compileAndroidNative") {
   description = "Compile native library for Android using NDK CMake toolchain"
   group = "Resources"
-  dependsOn("downloadStockfishSource")
+  dependsOn("downloadStockfishSource", "copyNnueToAndroid")
   doLast {
     val localProps = Properties()
     val localPropertiesFile = rootProject.file("local.properties")

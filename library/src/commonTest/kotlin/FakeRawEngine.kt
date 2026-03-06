@@ -17,7 +17,7 @@ internal class FakeRawEngine(private val responses: ArrayDeque<String> = ArrayDe
     sentCommands.add(command)
   }
 
-  override fun readLine(): String {
+  override suspend fun readLine(): String {
     return if (responses.isNotEmpty()) responses.removeFirst() else ""
   }
 

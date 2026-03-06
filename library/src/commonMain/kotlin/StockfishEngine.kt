@@ -5,7 +5,7 @@ class StockfishEngine internal constructor(private val raw: RawEngine) : AutoClo
   private val listeners = mutableListOf<(String) -> Unit>()
   private var closed = false
 
-  internal fun init() {
+  internal suspend fun init() {
     raw.send("uci")
     readUntil { it == "uciok" }
   }
@@ -58,7 +58,7 @@ class StockfishEngine internal constructor(private val raw: RawEngine) : AutoClo
    * @param onInfo called for each info line during search
    * @return the final result
    */
-  fun search(
+  suspend fun search(
     depth: Int? = null,
     moveTime: Long? = null,
     nodes: Long? = null,
@@ -109,7 +109,7 @@ class StockfishEngine internal constructor(private val raw: RawEngine) : AutoClo
     }
   }
 
-  private fun readUntil(predicate: (String) -> Boolean) {
+  private suspend fun readUntil(predicate: (String) -> Boolean) {
     while (true) {
       val line = raw.readLine()
       if (line.isEmpty()) continue
