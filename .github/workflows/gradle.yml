@@ -28,9 +28,7 @@ jobs:
             os: ubuntu-latest
           - target: linuxX64Test
             os: ubuntu-latest
-          - target: testDebugUnitTest
-            os: ubuntu-latest
-          - target: testReleaseUnitTest
+          - target: androidHostTest
             os: ubuntu-latest
     runs-on: ${{ matrix.os }}
 

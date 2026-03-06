@@ -1,19 +1,10 @@
 package io.github.axl_lvy.stockfish_multiplatform
 
-import kotlin.test.BeforeTest
-import kotlin.test.Test
-import kotlin.test.assertTrue
+import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.matchers.booleans.shouldBeTrue
 
-class TestStockfishEngine {
-    private lateinit var engine: StockfishEngine
+val TestStockfishEngine by testSuite {
+  val engine = testFixture { createStockfishEngine() } closeWith { close() }
 
-    @BeforeTest
-    fun setup() {
-        engine = createStockfishEngine()
-    }
-
-    @Test
-    fun `test can start engine`() {
-        assertTrue { engine.start() }
-    }
+  engine asParameterForEach { test("can start engine") { engine -> engine.start().shouldBeTrue() } }
 }

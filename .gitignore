@@ -14,3 +14,4 @@ xcuserdata
 **/resources/stockfish/*
 library/cpp/stockfish/
 .claude/settings.local.json
+**/jniLibs/**

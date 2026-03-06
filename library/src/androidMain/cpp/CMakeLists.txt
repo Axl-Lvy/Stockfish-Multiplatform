@@ -25,5 +25,4 @@ target_include_directories(stockfishjni PRIVATE
     "${NATIVE_ROOT}/stockfish"
 )
 
-find_library(log-lib log)
-target_link_libraries(stockfishjni ${log-lib})
+target_link_libraries(stockfishjni android log)
