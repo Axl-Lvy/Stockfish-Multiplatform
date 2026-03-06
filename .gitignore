@@ -12,7 +12,7 @@ xcuserdata
 #So we don't accidentally commit our private keys
 *.gpg
 **/resources/stockfish/*
-library/cpp/stockfish/
+stockfish-multiplatform/cpp/stockfish/
 .claude/settings.local.json
 **/jniLibs/**
-/library/src/androidMain/assets/
+/stockfish-multiplatform/src/androidMain/assets/

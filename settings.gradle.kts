@@ -14,4 +14,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "stockfish-multiplatform"
-include(":library")
+include(":stockfish-multiplatform")

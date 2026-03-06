@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Kotlin Multiplatform library (`io.github.axl-lvy:library`) that wraps the Stockfish chess engine for use on Android, iOS, JVM, and WebAssembly (browser) targets. Stockfish binaries are downloaded separately via Gradle tasks and bundled as resources.
+This is a Kotlin Multiplatform library (`fr.axl-lvy:library`) that wraps the Stockfish chess engine for use on Android, iOS, JVM, and WebAssembly (browser) targets. Stockfish binaries are downloaded separately via Gradle tasks and bundled as resources.
 
 ## Build Commands
 
@@ -63,7 +63,7 @@ All binaries come from the official Stockfish GitHub releases (`sf_17.1`).
 
 ## Package / Coordinates
 
-- Group: `io.github.axl-lvy`
+- Group: `fr.axl-lvy`
 - Artifact: `library`
 - Version: `0.1.0`
-- Package name: `io.github.axl_lvy.stockfish_multiplatform`
+- Package name: `fr.axl_lvy.stockfish_multiplatform`
