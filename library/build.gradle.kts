@@ -77,7 +77,7 @@ kotlin {
 
     androidMain.dependencies { implementation(libs.android.startup) }
 
-    wasmJsMain.dependencies {}
+    wasmJsMain.dependencies { implementation(npm("stockfish.wasm", "0.10.0")) }
   }
 }
 
