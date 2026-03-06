@@ -15,27 +15,23 @@ external interface StockfishModule : JsAny {
   fun terminate()
 }
 
-class WasmStockfishEngine : StockfishEngine {
-  private var module: StockfishModule? = null
+internal class WasmRawEngine : RawEngine {
+  var module: StockfishModule? = null
 
-  override fun start(): Boolean {
+  fun init() {
     stockfishFactory().then { resolved: JsAny ->
       module = resolved.unsafeCast()
       null
     }
-    return true
   }
 
-  override fun sendCommand(command: String) {
-    TODO("Not yet implemented")
+  override fun send(command: String) {
+    module?.postMessage(command.toJsString())
   }
 
-  override fun readLine(): String? {
-    TODO("Not yet implemented")
-  }
-
-  override fun readAllLines(): List<String> {
-    TODO("Not yet implemented")
+  override fun readLine(): String {
+    // WASM engine is async/callback-based — blocking read is not possible.
+    return ""
   }
 
   override fun close() {

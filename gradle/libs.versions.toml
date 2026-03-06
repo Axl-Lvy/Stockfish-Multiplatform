@@ -10,7 +10,8 @@ maven-publish = "0.30.0"
 download = "5.7.0"
 android-startup = "1.2.0"
 ktfmt = "0.25.0"
-testBalloon = "0.8.3-K2.3.0"
+kotest = "5.9.1"
+coroutines = "1.10.1"
 
 [libraries]
 core = { module = "androidx.test:core", version.ref = "core" }
@@ -18,8 +19,8 @@ junit = { module = "androidx.test.ext:junit", version.ref = "junit" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 android-startup = { module = "androidx.startup:startup-runtime", version.ref = "android-startup"}
 runner = { module = "androidx.test:runner", version.ref = "runner" }
-test-balloon = { module = "de.infix.testBalloon:testBalloon-framework-core", version.ref = "testBalloon" }
-test-balloon-kotest = { module = "de.infix.testBalloon:testBalloon-integration-kotest-assertions", version.ref = "testBalloon" }
+kotest-assertions-core = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 
 
 [plugins]
@@ -28,4 +29,3 @@ kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref =
 vanniktech-mavenPublish = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish" }
 download = { id = "de.undercouch.download", version.ref = "download" }
 ktfmt = { id = "com.ncorti.ktfmt.gradle", version.ref = "ktfmt" }
-testBalloon = { id = "de.infix.testBalloon", version.ref = "testBalloon" }

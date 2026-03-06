@@ -11,7 +11,6 @@ plugins {
   alias(libs.plugins.vanniktech.mavenPublish)
   alias(libs.plugins.download)
   alias(libs.plugins.ktfmt)
-  alias(libs.plugins.testBalloon)
 }
 
 ktfmt { googleStyle() }
@@ -71,8 +70,8 @@ kotlin {
     }
     commonTest.dependencies {
       implementation(libs.kotlin.test)
-      implementation(libs.test.balloon)
-      implementation(libs.test.balloon.kotest)
+      implementation(libs.kotest.assertions.core)
+      implementation(libs.kotlinx.coroutines.test)
     }
 
     androidMain.dependencies { implementation(libs.android.startup) }
