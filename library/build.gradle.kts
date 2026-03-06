@@ -10,9 +10,10 @@ plugins {
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.vanniktech.mavenPublish)
     alias(libs.plugins.download)
+    alias(libs.plugins.ktfmt)
 }
 
-group = "io.github.axl-lvy"
+group = "fr.axl-lvy"
 version = "0.1.0"
 
 kotlin {
@@ -56,6 +57,12 @@ kotlin {
     }
 
     sourceSets {
+        val jvmCommon by creating {
+            dependsOn(commonMain.get())
+        }
+        jvmMain.get().dependsOn(jvmCommon)
+        androidMain.get().dependsOn(jvmCommon)
+
         commonMain.dependencies {
                 //put your multiplatform dependencies here
             }
@@ -78,18 +85,29 @@ android {
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        externalNativeBuild {
+            cmake {
+                abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            }
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    externalNativeBuild {
+        cmake {
+            path = file("src/androidMain/cpp/CMakeLists.txt")
+            version = "3.22.1+"
+        }
+    }
 }
 
 dependencies {
     // Add these to your androidTestImplementation
-    androidTestImplementation("androidx.test.ext:junit:1.1.5")
-    androidTestImplementation("androidx.test:core:1.5.0")
-    androidTestImplementation("androidx.test:runner:1.5.2")
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.core)
+    androidTestImplementation(libs.runner)
 }
 
 mavenPublishing {
@@ -121,102 +139,75 @@ mavenPublishing {
     }
 }
 
-// Base URL for Stockfish binaries
+// Base URL for Stockfish releases
 val stockfishBaseUrl = "https://github.com/official-stockfish/Stockfish/releases/download/sf_17.1"
 
 // Create resource directories
 tasks.register("createResourceDirectories") {
+    description = "Create resource directories"
+    group = "Resources"
     doLast {
         mkdir("src/jvmMain/resources/stockfish")
-        mkdir("src/androidMain/resources/stockfish")
         mkdir("src/iosMain/resources/stockfish")
         mkdir("src/wasmJsMain/resources/stockfish")
     }
 }
 
-// JVM - Windows
-tasks.register<Download>("downloadStockfishWindows") {
-    dependsOn("createResourceDirectories")
-    src("$stockfishBaseUrl/stockfish-windows-x86-64.zip")
-    dest(layout.projectDirectory.file("src/jvmMain/resources/stockfish/stockfish-windows-x86-64.zip"))
+// Download Stockfish source code (used by both Android NDK and JVM CMake builds)
+tasks.register<Download>("downloadStockfishSource") {
+    description = "Download Stockfish source code (used by both Android NDK and JVM CMake builds)"
+    group = "Resources"
+    src("https://github.com/official-stockfish/Stockfish/archive/refs/tags/sf_17.1.tar.gz")
+    dest(layout.buildDirectory.file("stockfish-src.tar.gz"))
     onlyIfModified(true)
     doLast {
         copy {
-            from(zipTree(layout.projectDirectory.file("src/jvmMain/resources/stockfish/stockfish-windows-x86-64.zip")))
-            into(layout.projectDirectory.dir("src/jvmMain/resources"))
-            include("stockfish/stockfish-windows-x86-64.exe")
+            from(tarTree(resources.gzip(layout.buildDirectory.file("stockfish-src.tar.gz")))) {
+                include("Stockfish-sf_17.1/src/**")
+                eachFile {
+                    path = path.replaceFirst("Stockfish-sf_17.1/src/", "stockfish/")
+                }
+                includeEmptyDirs = false
+            }
+            into(layout.projectDirectory.dir("cpp"))
         }
-        delete(layout.projectDirectory.file("src/jvmMain/resources/stockfish/stockfish-windows-x86-64.zip"))
     }
 }
 
-// JVM - macOS
-tasks.register<Download>("downloadStockfishMacOS") {
-    dependsOn("createResourceDirectories")
-    src("$stockfishBaseUrl/stockfish-macos-x86-64.tar")
-    dest(layout.projectDirectory.file("src/jvmMain/resources/stockfish/stockfish-macos-x86-64.tar"))
-    onlyIfModified(true)
+// Compile JVM native library using CMake on the host machine
+tasks.register("compileJvmNative") {
+    description = "Compile JVM native library using CMake on the host machine"
+    group = "Resources"
+    dependsOn("downloadStockfishSource")
     doLast {
-        copy {
-            from(tarTree(layout.projectDirectory.file("src/jvmMain/resources/stockfish/stockfish-macos-x86-64.tar")))
-            into(layout.projectDirectory.dir("src/jvmMain/resources"))
-            include("stockfish/stockfish-macos-x86-64")
+        val buildDir = layout.buildDirectory.dir("jvm-native").get().asFile
+        buildDir.mkdirs()
+        val cmakeSrcDir = layout.projectDirectory.dir("src/jvmMain/cpp").asFile.absolutePath
+        exec {
+            commandLine("cmake", cmakeSrcDir, "-B", buildDir.absolutePath, "-DCMAKE_BUILD_TYPE=Release")
         }
-        delete(layout.projectDirectory.file("src/jvmMain/resources/stockfish/stockfish-macos-x86-64.tar"))
-    }
-}
-
-// JVM - Linux
-tasks.register<Download>("downloadStockfishLinux") {
-    dependsOn("createResourceDirectories")
-    src("$stockfishBaseUrl/stockfish-ubuntu-x86-64.tar")
-    dest(layout.projectDirectory.file("src/jvmMain/resources/stockfish/stockfish-ubuntu-x86-64.tar"))
-    onlyIfModified(true)
-    doLast {
-        copy {
-            from(tarTree(layout.projectDirectory.file("src/jvmMain/resources/stockfish/stockfish-ubuntu-x86-64.tar")))
-            into(layout.projectDirectory.dir("src/jvmMain/resources"))
-            include("stockfish/stockfish-ubuntu-x86-64")
+        exec {
+            commandLine("cmake", "--build", buildDir.absolutePath, "--config", "Release")
         }
-        delete(layout.projectDirectory.file("src/jvmMain/resources/stockfish/stockfish-ubuntu-x86-64.tar"))
-    }
-}
-
-// Android
-tasks.register<Download>("downloadStockfishAndroidArm64") {
-    dependsOn("createResourceDirectories")
-    src("$stockfishBaseUrl/stockfish-android-armv8.tar")
-    dest(layout.projectDirectory.file("src/androidMain/resources/stockfish/stockfish-android-armv8.tar"))
-    onlyIfModified(true)
-    doLast {
-        copy {
-            from(tarTree(layout.projectDirectory.file("src/androidMain/resources/stockfish/stockfish-android-armv8.tar")))
-            into(layout.projectDirectory.dir("src/androidMain/resources"))
-            include("stockfish/stockfish-android-armv8")
-            rename("stockfish/stockfish-android-armv8", "stockfish-arm64-v8a")
+        val osName = System.getProperty("os.name").lowercase()
+        val libName = when {
+            osName.contains("win") -> "stockfishjni.dll"
+            osName.contains("mac") -> "libstockfishjni.dylib"
+            else -> "libstockfishjni.so"
         }
-        delete(layout.projectDirectory.file("src/androidMain/resources/stockfish/stockfish-android-armv8.tar"))
-    }
-}
-
-tasks.register<Download>("downloadStockfishAndroidArm32") {
-    dependsOn("createResourceDirectories")
-    src("$stockfishBaseUrl/stockfish-android-armv7.tar")
-    dest(layout.projectDirectory.file("src/androidMain/resources/stockfish/stockfish-android-armv7.tar"))
-    onlyIfModified(true)
-    doLast {
+        val destDir = layout.projectDirectory.dir("src/jvmMain/resources/stockfish").asFile
+        destDir.mkdirs()
         copy {
-            from(tarTree(layout.projectDirectory.file("src/androidMain/resources/stockfish/stockfish-android-armv7.tar")))
-            into(layout.projectDirectory.dir("src/androidMain/resources"))
-            include("stockfish/stockfish-android-armv7")
-            rename("stockfish/stockfish-android-armv7", "stockfish-armeabi-v7a")
+            from(buildDir) { include(libName) }
+            into(destDir)
         }
-        delete(layout.projectDirectory.file("src/androidMain/resources/stockfish/stockfish-android-armv7.tar"))
     }
 }
 
 // iOS
 tasks.register<Download>("downloadStockfishIOS") {
+    description = "Download Stockfish binary for IOS"
+    group = "Resources"
     dependsOn("createResourceDirectories")
     src("$stockfishBaseUrl/stockfish-macos-m1-apple-silicon.tar")
     dest(layout.projectDirectory.file("src/iosMain/resources/stockfish/stockfish-macos-m1-apple-silicon.tar"))
@@ -234,6 +225,8 @@ tasks.register<Download>("downloadStockfishIOS") {
 
 // WASM - Download from npm package
 tasks.register<Download>("downloadStockfishWasmPackage") {
+    description = "Download Stockfish binary for Wasm"
+    group = "Resources"
     dependsOn("createResourceDirectories")
     src("https://registry.npmjs.org/stockfish.wasm/-/stockfish.wasm-0.10.0.tgz")
     dest(layout.buildDirectory.file("stockfish-wasm-package.tgz"))
@@ -241,6 +234,8 @@ tasks.register<Download>("downloadStockfishWasmPackage") {
 }
 
 tasks.register("extractStockfishWasm") {
+    description = "Extract Stockfish Wasm"
+    group = "Resources"
     dependsOn("downloadStockfishWasmPackage")
     doLast {
         // Extract from npm package
@@ -261,19 +256,16 @@ tasks.register("extractStockfishWasm") {
     }
 }
 
-// Register a task that downloads all the binaries
-tasks.register("downloadStockfishBinaries") {
+// Register a task that downloads/compiles everything needed
+tasks.register("DownloadCompile") {
+    description = "Downloads Stockfish source and compiles native libraries for all platforms"
+    group = "Resources"
     dependsOn(
-        "downloadStockfishWindows",
-        "downloadStockfishMacOS",
-        "downloadStockfishLinux",
-        "downloadStockfishAndroidArm64",
-        "downloadStockfishAndroidArm32",
+        "downloadStockfishSource",
+        "compileJvmNative",
         "downloadStockfishIOS",
         "extractStockfishWasm"
     )
-    description = "Downloads all Stockfish binaries for all platforms"
-    group = "stockfish"
 }
 
 tasks.named("clean") {
@@ -283,6 +275,8 @@ tasks.named("clean") {
                 include("**/resources/stockfish/**")
             }
         )
-        logger.lifecycle("Cleaned Stockfish resources directories")
+        delete(layout.projectDirectory.dir(".cxx"))
+        delete(layout.projectDirectory.dir("cpp/stockfish"))
+        logger.lifecycle("Cleaned Stockfish resources and source directories")
     }
 }

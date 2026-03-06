@@ -12,4 +12,5 @@ xcuserdata
 #So we don't accidentally commit our private keys
 *.gpg
 **/resources/stockfish/*
+library/cpp/stockfish/
 .claude/settings.local.json
