@@ -8,9 +8,6 @@
       android:authorities="${applicationId}.androidx-startup"
       android:exported="false"
       tools:node="merge">
-
-      <meta-data  android:name="io.github.axl_lvy.stockfish_multiplatform.StockfishMultiplatformInitializer"
-                  android:value="androidx.startup" />
     </provider>
   </application>
 </manifest>
