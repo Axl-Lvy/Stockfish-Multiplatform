@@ -14,6 +14,8 @@ plugins {
   alias(libs.plugins.testBalloon)
 }
 
+ktfmt { googleStyle() }
+
 group = "fr.axl-lvy"
 
 version = "0.1.0"
@@ -39,14 +41,14 @@ kotlin {
       commonWebpackConfig {
         outputFileName = "composeApp.js"
         devServer =
-            (devServer ?: KotlinWebpackConfig.DevServer()).apply {
-              static =
-                  (static ?: mutableListOf()).apply {
-                    // Serve sources to debug inside browser
-                    add(project.rootDir.path)
-                    add(project.projectDir.path)
-                  }
-            }
+          (devServer ?: KotlinWebpackConfig.DevServer()).apply {
+            static =
+              (static ?: mutableListOf()).apply {
+                // Serve sources to debug inside browser
+                add(project.rootDir.path)
+                add(project.projectDir.path)
+              }
+          }
       }
       testTask {
         useKarma {
@@ -94,7 +96,7 @@ mavenPublishing {
   pom {
     name = "Stockfish Multiplatform"
     description =
-        "A multiplatform implementation of Stockfish chess engine for Android, iOS, and JVM."
+      "A multiplatform implementation of Stockfish chess engine for Android, iOS, and JVM."
     inceptionYear = "2026"
     url = "https://github.com/axl-lvy/stockfish-multiplatform/"
     licenses {
@@ -162,11 +164,11 @@ tasks.register("compileJvmNative") {
     exec { commandLine("cmake", "--build", buildDir.absolutePath, "--config", "Release") }
     val osName = System.getProperty("os.name").lowercase()
     val libName =
-        when {
-          osName.contains("win") -> "stockfishjni.dll"
-          osName.contains("mac") -> "libstockfishjni.dylib"
-          else -> "libstockfishjni.so"
-        }
+      when {
+        osName.contains("win") -> "stockfishjni.dll"
+        osName.contains("mac") -> "libstockfishjni.dylib"
+        else -> "libstockfishjni.so"
+      }
     val destDir = layout.projectDirectory.dir("src/jvmMain/resources/stockfish").asFile
     destDir.mkdirs()
     copy {
@@ -174,7 +176,7 @@ tasks.register("compileJvmNative") {
       into(destDir)
     }
     val androidHostTestJniLibsDir =
-        layout.projectDirectory.dir("src/androidHostTest/jniLibs").asFile
+      layout.projectDirectory.dir("src/androidHostTest/jniLibs").asFile
     androidHostTestJniLibsDir.mkdirs()
     copy {
       from(buildDir) { include(libName) }
@@ -190,22 +192,29 @@ tasks.register<Download>("downloadStockfishIOS") {
   dependsOn("createResourceDirectories")
   src("$stockfishBaseUrl/stockfish-macos-m1-apple-silicon.tar")
   dest(
-      layout.projectDirectory.file(
-          "src/iosMain/resources/stockfish/stockfish-macos-m1-apple-silicon.tar"))
+    layout.projectDirectory.file(
+      "src/iosMain/resources/stockfish/stockfish-macos-m1-apple-silicon.tar"
+    )
+  )
   onlyIfModified(true)
   doLast {
     copy {
       from(
-          tarTree(
-              layout.projectDirectory.file(
-                  "src/iosMain/resources/stockfish/stockfish-macos-m1-apple-silicon.tar")))
+        tarTree(
+          layout.projectDirectory.file(
+            "src/iosMain/resources/stockfish/stockfish-macos-m1-apple-silicon.tar"
+          )
+        )
+      )
       into(layout.projectDirectory.dir("src/iosMain/resources/stockfish"))
       include("stockfish/stockfish-macos-m1-apple-silicon")
       rename("stockfish/stockfish-macos-m1-apple-silicon", "stockfish")
     }
     delete(
-        layout.projectDirectory.file(
-            "src/iosMain/resources/stockfish/stockfish-macos-m1-apple-silicon.tar"))
+      layout.projectDirectory.file(
+        "src/iosMain/resources/stockfish/stockfish-macos-m1-apple-silicon.tar"
+      )
+    )
   }
 }
 
@@ -247,11 +256,12 @@ tasks.register("DownloadCompile") {
   description = "Downloads Stockfish source and compiles native libraries for all platforms"
   group = "Resources"
   dependsOn(
-      "downloadStockfishSource",
-      "compileJvmNative",
-      "compileAndroidNative",
-      "downloadStockfishIOS",
-      "extractStockfishWasm")
+    "downloadStockfishSource",
+    "compileJvmNative",
+    "compileAndroidNative",
+    "downloadStockfishIOS",
+    "extractStockfishWasm",
+  )
 }
 
 tasks.named("clean") {
@@ -275,19 +285,19 @@ tasks.register("compileAndroidNative") {
     val localPropertiesFile = rootProject.file("local.properties")
     if (localPropertiesFile.exists()) localPropertiesFile.inputStream().use { localProps.load(it) }
     val sdkDir =
-        localProps.getProperty("sdk.dir")
-            ?: System.getenv("ANDROID_HOME")
-            ?: System.getenv("ANDROID_SDK_ROOT")
-            ?: error("Android SDK not found. Set sdk.dir in local.properties or ANDROID_HOME.")
+      localProps.getProperty("sdk.dir")
+        ?: System.getenv("ANDROID_HOME")
+        ?: System.getenv("ANDROID_SDK_ROOT")
+        ?: error("Android SDK not found. Set sdk.dir in local.properties or ANDROID_HOME.")
     val ndkHome =
-        localProps.getProperty("ndk.dir")
-            ?: file(sdkDir)
-                .resolve("ndk")
-                .listFiles()
-                ?.filter { it.isDirectory }
-                ?.maxByOrNull { it.name }
-                ?.absolutePath
-            ?: error("NDK not found in $sdkDir. Install it via Android Studio SDK Manager.")
+      localProps.getProperty("ndk.dir")
+        ?: file(sdkDir)
+          .resolve("ndk")
+          .listFiles()
+          ?.filter { it.isDirectory }
+          ?.maxByOrNull { it.name }
+          ?.absolutePath
+        ?: error("NDK not found in $sdkDir. Install it via Android Studio SDK Manager.")
     val cmakeSrcDir = layout.projectDirectory.dir("src/androidMain/cpp").asFile.absolutePath
     val abis = listOf("arm64-v8a", "armeabi-v7a", "x86_64")
     for (abi in abis) {
@@ -295,14 +305,15 @@ tasks.register("compileAndroidNative") {
       buildDir.mkdirs()
       exec {
         commandLine(
-            "cmake",
-            cmakeSrcDir,
-            "-B",
-            buildDir.absolutePath,
-            "-DCMAKE_TOOLCHAIN_FILE=$ndkHome/build/cmake/android.toolchain.cmake",
-            "-DANDROID_ABI=$abi",
-            "-DANDROID_PLATFORM=android-21",
-            "-DCMAKE_BUILD_TYPE=Release")
+          "cmake",
+          cmakeSrcDir,
+          "-B",
+          buildDir.absolutePath,
+          "-DCMAKE_TOOLCHAIN_FILE=$ndkHome/build/cmake/android.toolchain.cmake",
+          "-DANDROID_ABI=$abi",
+          "-DANDROID_PLATFORM=android-21",
+          "-DCMAKE_BUILD_TYPE=Release",
+        )
       }
       exec { commandLine("cmake", "--build", buildDir.absolutePath, "--config", "Release") }
       val destDir = layout.projectDirectory.dir("src/androidMain/jniLibs/$abi").asFile
