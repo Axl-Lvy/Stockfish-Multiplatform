@@ -105,9 +105,7 @@ class StockfishIntegrationTest {
     engine.setPosition()
     val result1 = engine.search(depth = 5)
 
-    engine.setPosition(
-      fen = "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2"
-    )
+    engine.setPosition(fen = "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2")
     val result2 = engine.search(depth = 5)
 
     result1.bestMove shouldMatch MOVE_PATTERN

@@ -8,7 +8,8 @@ class UciParserTest {
 
   @Test
   fun parseInfoWithAllFields() = runTest {
-    val line = "info depth 20 seldepth 25 multipv 1 score cp 35 nodes 1234567 nps 500000 time 2469 pv e2e4 e7e5 g1f3"
+    val line =
+      "info depth 20 seldepth 25 multipv 1 score cp 35 nodes 1234567 nps 500000 time 2469 pv e2e4 e7e5 g1f3"
     val info = UciParser.parseInfo(line)
 
     info.depth shouldBe 20

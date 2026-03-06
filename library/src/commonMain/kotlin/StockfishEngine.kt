@@ -49,8 +49,8 @@ class StockfishEngine internal constructor(private val raw: RawEngine) : AutoClo
   /**
    * Search the current position.
    *
-   * Blocks until the engine emits "bestmove". At least one limit should be set,
-   * otherwise the engine searches indefinitely (until [stop] is called from another thread).
+   * Blocks until the engine emits "bestmove". At least one limit should be set, otherwise the
+   * engine searches indefinitely (until [stop] is called from another thread).
    *
    * @param depth max depth to search (null = unlimited)
    * @param moveTime time to search in milliseconds (null = unlimited)
@@ -120,11 +120,7 @@ class StockfishEngine internal constructor(private val raw: RawEngine) : AutoClo
 }
 
 /** The final result of a search. */
-data class SearchResult(
-  val bestMove: String,
-  val ponderMove: String?,
-  val info: List<SearchInfo>,
-)
+data class SearchResult(val bestMove: String, val ponderMove: String?, val info: List<SearchInfo>)
 
 /** A single "info" line emitted by the engine during search. */
 data class SearchInfo(

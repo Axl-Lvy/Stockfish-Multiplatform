@@ -25,11 +25,12 @@ internal object UciParser {
         "score" -> {
           val type = tokens.getOrNull(++i)
           val value = tokens.getOrNull(++i)
-          score = when (type) {
-            "cp" -> value?.toIntOrNull()?.let { Score.Cp(it) }
-            "mate" -> value?.toIntOrNull()?.let { Score.Mate(it) }
-            else -> null
-          }
+          score =
+            when (type) {
+              "cp" -> value?.toIntOrNull()?.let { Score.Cp(it) }
+              "mate" -> value?.toIntOrNull()?.let { Score.Mate(it) }
+              else -> null
+            }
         }
         "pv" -> {
           pv = tokens.subList(i + 1, tokens.size)

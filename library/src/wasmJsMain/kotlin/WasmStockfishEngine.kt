@@ -5,13 +5,15 @@ package io.github.axl_lvy.stockfish_multiplatform
 import kotlin.js.ExperimentalWasmJsInterop
 import kotlin.js.Promise
 
-@JsModule("stockfish.wasm")
-external fun stockfishFactory(): Promise<JsAny>
+@JsModule("stockfish.wasm") external fun stockfishFactory(): Promise<JsAny>
 
 external interface StockfishModule : JsAny {
   fun postMessage(command: JsString)
+
   fun addMessageListener(callback: (JsString) -> Unit)
+
   fun removeMessageListener(callback: (JsString) -> Unit)
+
   fun terminate()
 }
 

@@ -25,11 +25,12 @@ class StockfishEngineInitTest {
 
   @Test
   fun initSkipsNonUciokLines() = runTest {
-    val (_, raw) = createFakeEngine(
-      "id name Stockfish 17",
-      "id author the Stockfish developers",
-      "option name Threads type spin default 1 min 1 max 1024",
-    )
+    val (_, raw) =
+      createFakeEngine(
+        "id name Stockfish 17",
+        "id author the Stockfish developers",
+        "option name Threads type spin default 1 min 1 max 1024",
+      )
 
     raw.sentCommands shouldBe listOf("uci")
   }
@@ -121,10 +122,7 @@ class StockfishEngineSearchTest {
   @Test
   fun searchWithMovetime() = runTest {
     val (engine, raw) = createFakeEngine()
-    raw.enqueue(
-      "info depth 10 score cp 30 pv d2d4",
-      "bestmove d2d4",
-    )
+    raw.enqueue("info depth 10 score cp 30 pv d2d4", "bestmove d2d4")
 
     val result = engine.search(moveTime = 1000)
 
@@ -136,10 +134,7 @@ class StockfishEngineSearchTest {
   @Test
   fun searchWithNodes() = runTest {
     val (engine, raw) = createFakeEngine()
-    raw.enqueue(
-      "info depth 5 score cp 10 pv g1f3",
-      "bestmove g1f3",
-    )
+    raw.enqueue("info depth 5 score cp 10 pv g1f3", "bestmove g1f3")
 
     val result = engine.search(nodes = 50000)
 
@@ -226,10 +221,7 @@ class StockfishEngineListenerTest {
   @Test
   fun listenerReceivesLinesDuringSearch() = runTest {
     val (engine, raw) = createFakeEngine()
-    raw.enqueue(
-      "info depth 1 score cp 20 pv e2e4",
-      "bestmove e2e4",
-    )
+    raw.enqueue("info depth 1 score cp 20 pv e2e4", "bestmove e2e4")
 
     val receivedLines = mutableListOf<String>()
     engine.addMessageListener { receivedLines.add(it) }

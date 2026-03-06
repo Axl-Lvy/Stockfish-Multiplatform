@@ -2,7 +2,9 @@ package io.github.axl_lvy.stockfish_multiplatform
 
 internal abstract class JniStockfishEngine : RawEngine {
   private external fun startEngine()
+
   private external fun nativeSendCommand(cmd: String)
+
   private external fun readOutput(): String
 
   protected abstract fun loadNativeLibrary()
