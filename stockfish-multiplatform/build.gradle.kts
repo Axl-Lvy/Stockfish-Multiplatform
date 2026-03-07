@@ -278,6 +278,21 @@ tasks.named("jvmProcessResources") {
   dependsOn("downloadNnueNetworks")
 }
 
+afterEvaluate {
+  tasks.withType<com.android.build.gradle.tasks.MergeSourceSetFolders>()
+    .matching { it.name.contains("Assets") }
+    .configureEach {
+      dependsOn("copyNnueToAndroid")
+      sourceFolderInputs.from(layout.projectDirectory.dir("src/androidMain/assets"))
+      doLast {
+        copy {
+          from(layout.projectDirectory.dir("src/androidMain/assets"))
+          into(outputDir)
+        }
+      }
+    }
+}
+
 tasks.named("clean") {
   doLast {
     delete(fileTree("src") { include("**/resources/stockfish/**") })
