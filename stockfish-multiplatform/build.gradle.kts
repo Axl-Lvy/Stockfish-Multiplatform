@@ -253,8 +253,8 @@ tasks.register("extractStockfishWasm") {
       into(layout.buildDirectory.dir("stockfish-js-extracted"))
     }
     copy {
-      from(layout.buildDirectory.file("stockfish-js-extracted/package/bin/stockfish-18-lite.js"))
-      from(layout.buildDirectory.file("stockfish-js-extracted/package/bin/stockfish-18-lite.wasm"))
+      from(layout.buildDirectory.file("stockfish-js-extracted/package/bin/stockfish-18.js"))
+      from(layout.buildDirectory.file("stockfish-js-extracted/package/bin/stockfish-18.wasm"))
       into(layout.projectDirectory.dir("src/wasmJsMain/resources/stockfish"))
     }
     delete(layout.buildDirectory.dir("stockfish-js-extracted"))
