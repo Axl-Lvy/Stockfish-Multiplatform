@@ -185,17 +185,18 @@ tasks.register("compileJvmNative") {
         osName.contains("mac") -> "libstockfishjni.dylib"
         else -> "libstockfishjni.so"
       }
+    val nativeLib = fileTree(buildDir) { include("**/$libName") }.files.first()
     val destDir = layout.projectDirectory.dir("src/jvmMain/resources/stockfish").asFile
     destDir.mkdirs()
     copy {
-      from(fileTree(buildDir) { include("**/$libName") })
+      from(nativeLib)
       into(destDir)
     }
     val androidHostTestJniLibsDir =
       layout.projectDirectory.dir("src/androidHostTest/jniLibs").asFile
     androidHostTestJniLibsDir.mkdirs()
     copy {
-      from(fileTree(buildDir) { include("**/$libName") })
+      from(nativeLib)
       into(androidHostTestJniLibsDir)
     }
   }
