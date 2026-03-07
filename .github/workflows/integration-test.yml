@@ -1,4 +1,4 @@
-name: Check
+name: Integration Tests
 
 on:
   push:
@@ -15,8 +15,11 @@ permissions:
   contents: read
 
 jobs:
-  jvm-test:
-    runs-on: ubuntu-latest
+  integration-jvm:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 17
@@ -26,10 +29,17 @@ jobs:
           distribution: 'temurin'
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
-      - name: Run JVM tests
-        run: ./gradlew :stockfish-multiplatform:jvmTest
+      - name: Run JVM integration tests
+        run: ./gradlew :integration-tests:jvmTest --stacktrace
+      - name: Print test report on failure
+        if: failure()
+        shell: bash
+        run: |
+          find integration-tests/build -name "TEST-*.xml" -exec cat {} \; 2>/dev/null || true
+          echo "--- Resource files ---"
+          find stockfish-multiplatform/src/jvmMain/resources/stockfish -type f -ls 2>/dev/null || echo "No resources found"
 
-  android-test:
+  integration-android:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,7 +55,7 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Run Android instrumented tests
+      - name: Run Android integration tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
@@ -53,9 +63,9 @@ jobs:
           target: google_apis
           disable-animations: true
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          script: ./gradlew :stockfish-multiplatform:connectedAndroidTest
+          script: ./gradlew :integration-tests:connectedAndroidTest
 
-  wasm-test:
+  integration-wasm:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -66,5 +76,5 @@ jobs:
           distribution: 'temurin'
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
-      - name: Run WASM tests
-        run: ./gradlew :stockfish-multiplatform:wasmJsTest
+      - name: Run WASM integration tests
+        run: ./gradlew :integration-tests:wasmJsBrowserTest

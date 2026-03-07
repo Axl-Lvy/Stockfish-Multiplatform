@@ -8,20 +8,21 @@ internal class JvmStockfishEngine : JniStockfishEngine() {
     val osName = System.getProperty("os.name").lowercase()
     val libName =
       when {
-        osName.contains("win") -> "stockfishjni.dll"
         osName.contains("mac") -> "libstockfishjni.dylib"
         else -> "libstockfishjni.so"
       }
     val tempDir = createTempDirectory("stockfishjni").toFile()
     tempDir.deleteOnExit()
     val lib = File(tempDir, libName)
-    javaClass.getResourceAsStream("/stockfish/$libName")?.use { it.copyTo(lib.outputStream()) }
-      ?: error("Native library not found: /stockfish/$libName")
+    javaClass.getResourceAsStream("/stockfish/$libName")?.use { input ->
+      lib.outputStream().use { output -> input.copyTo(output) }
+    } ?: error("Native library not found: /stockfish/$libName")
 
     for (nnue in listOf("nn-c288c895ea92.nnue", "nn-37f18f62d772.nnue")) {
       val dest = File(tempDir, nnue)
-      javaClass.getResourceAsStream("/stockfish/$nnue")?.use { it.copyTo(dest.outputStream()) }
-        ?: error("NNUE network not found: /stockfish/$nnue")
+      javaClass.getResourceAsStream("/stockfish/$nnue")?.use { input ->
+        dest.outputStream().use { output -> input.copyTo(output) }
+      } ?: error("NNUE network not found: /stockfish/$nnue")
       dest.deleteOnExit()
     }
 
