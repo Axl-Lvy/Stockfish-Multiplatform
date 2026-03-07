@@ -275,7 +275,7 @@ tasks.register("DownloadCompile") {
 }
 
 tasks.named("jvmProcessResources") {
-  dependsOn("downloadNnueNetworks")
+  dependsOn("downloadNnueNetworks", "compileJvmNative")
 }
 
 afterEvaluate {
