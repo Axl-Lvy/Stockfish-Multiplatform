@@ -1,4 +1,4 @@
-name: Check
+name: Integration Tests
 
 on:
   push:
@@ -15,8 +15,11 @@ permissions:
   contents: read
 
 jobs:
-  jvm-test:
-    runs-on: ubuntu-latest
+  integration-jvm:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 17
@@ -26,11 +29,22 @@ jobs:
           distribution: 'temurin'
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
-      - name: Run JVM tests
-        run: ./gradlew :stockfish-multiplatform:jvmTest
+      - name: Run JVM integration tests
+        run: ./gradlew :integration-tests:jvmTest
 
-  android-test:
-    runs-on: ubuntu-latest
+  integration-android:
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            arch: x86_64
+            api-level: 30
+            target: google_apis
+          - runner: macos-latest
+            arch: default
+            api-level: 35
+            target: google_apis
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 17
@@ -41,21 +55,22 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
       - name: Enable KVM
+        if: runner.os == 'Linux'
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Run Android instrumented tests
+      - name: Run Android integration tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30
-          arch: x86_64
-          target: google_apis
+          api-level: ${{ matrix.api-level }}
+          arch: ${{ matrix.arch }}
+          target: ${{ matrix.target }}
           disable-animations: true
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          script: ./gradlew :stockfish-multiplatform:connectedAndroidTest
+          script: ./gradlew :integration-tests:connectedAndroidTest
 
-  wasm-test:
+  integration-wasm:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -66,5 +81,5 @@ jobs:
           distribution: 'temurin'
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
-      - name: Run WASM tests
-        run: ./gradlew :stockfish-multiplatform:wasmJsTest
+      - name: Run WASM integration tests
+        run: ./gradlew :integration-tests:wasmJsBrowserTest

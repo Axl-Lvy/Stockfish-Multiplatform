@@ -169,7 +169,7 @@ tasks.register("downloadNnueNetworks") {
 tasks.register("compileJvmNative") {
   description = "Compile JVM native library using CMake on the host machine"
   group = "Resources"
-  dependsOn("downloadStockfishSource", "downloadNnueNetworks")
+  dependsOn("downloadStockfishSource")
   doLast {
     val buildDir = layout.buildDirectory.dir("jvm-native").get().asFile
     buildDir.mkdirs()
@@ -276,6 +276,8 @@ tasks.register("DownloadCompile") {
 
 tasks.named("jvmProcessResources") { dependsOn("downloadNnueNetworks", "compileJvmNative") }
 
+tasks.named("wasmJsProcessResources") { dependsOn("extractStockfishWasm") }
+
 afterEvaluate {
   tasks
     .withType<com.android.build.gradle.tasks.MergeSourceSetFolders>()
@@ -290,6 +292,8 @@ afterEvaluate {
         }
       }
     }
+  tasks.matching { it.name.contains("merge") && it.name.contains("JniLibFolders") }
+    .configureEach { dependsOn("compileAndroidNative") }
 }
 
 tasks.named("clean") {
@@ -331,7 +335,7 @@ tasks.register("copyNnueToAndroid") {
 tasks.register("compileAndroidNative") {
   description = "Compile native library for Android using NDK CMake toolchain"
   group = "Resources"
-  dependsOn("downloadStockfishSource", "copyNnueToAndroid")
+  dependsOn("downloadStockfishSource")
   doLast {
     val localProps = Properties()
     val localPropertiesFile = rootProject.file("local.properties")

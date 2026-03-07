@@ -28,4 +28,8 @@ target_include_directories(stockfishjni PRIVATE
     ${JNI_INCLUDE_DIRS}
 )
 
-target_link_libraries(stockfishjni ${JNI_LIBRARIES} pthread)
+if(WIN32)
+    target_link_libraries(stockfishjni ${JNI_LIBRARIES})
+else()
+    target_link_libraries(stockfishjni ${JNI_LIBRARIES} pthread)
+endif()
