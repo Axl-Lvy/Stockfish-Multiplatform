@@ -31,6 +31,17 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
       - name: Run JVM integration tests
         run: ./gradlew :integration-tests:jvmTest
+      - name: Print test report on failure
+        if: failure()
+        shell: bash
+        run: |
+          find integration-tests/build/reports/tests -name "*.xml" -exec cat {} \; 2>/dev/null || true
+          echo "--- DLL check ---"
+          find stockfish-multiplatform/src/jvmMain/resources/stockfish -type f 2>/dev/null | head -20
+          if [ -f stockfish-multiplatform/src/jvmMain/resources/stockfish/stockfishjni.dll ]; then
+            echo "DLL found, checking dependencies..."
+            dumpbin //dependents stockfish-multiplatform/src/jvmMain/resources/stockfish/stockfishjni.dll 2>/dev/null || true
+          fi
 
   integration-android:
     runs-on: ubuntu-latest
