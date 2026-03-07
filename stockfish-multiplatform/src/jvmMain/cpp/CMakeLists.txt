@@ -23,7 +23,6 @@ target_compile_definitions(stockfishjni PRIVATE
 )
 
 if(MSVC)
-    set_target_properties(stockfishjni PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded")
     target_compile_options(stockfishjni PRIVATE /O2 /EHsc)
 else()
     target_compile_options(stockfishjni PRIVATE -O3 -fexceptions)
