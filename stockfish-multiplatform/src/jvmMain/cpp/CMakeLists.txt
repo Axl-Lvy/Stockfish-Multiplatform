@@ -23,6 +23,8 @@ target_compile_definitions(stockfishjni PRIVATE
 )
 
 if(MSVC)
+    # Static CRT so the DLL is self-contained (no vcruntime140.dll dependency)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
     target_compile_options(stockfishjni PRIVATE /O2 /EHsc)
 else()
     target_compile_options(stockfishjni PRIVATE -O3 -fexceptions)
