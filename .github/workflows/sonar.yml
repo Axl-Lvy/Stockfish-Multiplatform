@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   sonar:
-    name: Build and analyze
+    name: Analyze
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,8 +35,8 @@ jobs:
           restore-keys: ${{ runner.os }}-sonar
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
-      - name: Build and analyze
-        run: ./gradlew build sonar --no-configuration-cache
+      - name: Analyze
+        run: ./gradlew sonar --no-configuration-cache
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
