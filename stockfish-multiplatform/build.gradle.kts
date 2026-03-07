@@ -1,4 +1,3 @@
-import com.vanniktech.maven.publish.SonatypeHost
 import de.undercouch.gradle.tasks.download.Download
 import java.util.Properties
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
@@ -77,11 +76,20 @@ dependencies {
   "androidDeviceTestImplementation"(libs.core)
 }
 
+publishing {
+  repositories {
+    maven {
+      name = "GitHubPackages"
+      url = uri("https://maven.pkg.github.com/Axl-Lvy/Stockfish-Multiplatform")
+      credentials {
+        username = System.getenv("GITHUB_ACTOR")
+        password = System.getenv("GITHUB_TOKEN")
+      }
+    }
+  }
+}
+
 mavenPublishing {
-  publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
-
-  signAllPublications()
-
   coordinates(group.toString(), "stockfish-multiplatform", version.toString())
 
   pom {
