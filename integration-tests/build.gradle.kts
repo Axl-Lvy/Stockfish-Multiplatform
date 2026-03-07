@@ -1,6 +1,5 @@
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig
 
 plugins {
   alias(libs.plugins.kotlinMultiplatform)
@@ -20,23 +19,6 @@ kotlin {
   @OptIn(ExperimentalWasmDsl::class)
   wasmJs {
     browser {
-      commonWebpackConfig {
-        devServer =
-          (devServer ?: KotlinWebpackConfig.DevServer()).apply {
-            static =
-              (static ?: mutableListOf()).apply {
-                add(project.rootDir.path)
-                add(project.projectDir.path)
-                // Serve library's WASM resources (stockfish-18.js/wasm)
-                add(
-                  project(":stockfish-multiplatform")
-                    .projectDir
-                    .resolve("src/wasmJsMain/resources")
-                    .absolutePath
-                )
-              }
-          }
-      }
       testTask { useKarma { useFirefoxHeadless() } }
     }
   }
@@ -56,8 +38,23 @@ dependencies {
   "androidDeviceTestImplementation"(libs.core)
 }
 
-tasks.named("wasmJsBrowserTest") {
+tasks.register("copyWasmResources") {
   dependsOn(":stockfish-multiplatform:extractStockfishWasm")
+  doLast {
+    copy {
+      from(
+        project(":stockfish-multiplatform")
+          .layout.projectDirectory.dir("src/wasmJsMain/resources/stockfish")
+      )
+      into(layout.projectDirectory.dir("src/wasmJsMain/resources/stockfish"))
+    }
+  }
+}
+
+tasks.named("wasmJsProcessResources") { dependsOn("copyWasmResources") }
+
+tasks.named("clean") {
+  doLast { delete(layout.projectDirectory.dir("src/wasmJsMain/resources/stockfish")) }
 }
 
 afterEvaluate {
