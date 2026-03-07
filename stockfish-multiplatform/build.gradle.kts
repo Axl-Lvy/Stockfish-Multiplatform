@@ -82,7 +82,7 @@ mavenPublishing {
 
   signAllPublications()
 
-  coordinates(group.toString(), "library", version.toString())
+  coordinates(group.toString(), "stockfish-multiplatform", version.toString())
 
   pom {
     name = "Stockfish Multiplatform"
