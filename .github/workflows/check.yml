@@ -55,7 +55,7 @@ jobs:
           target: google_apis
           disable-animations: true
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          script: ./gradlew :stockfish-multiplatform:connectedDebugAndroidTest
+          script: ./gradlew :stockfish-multiplatform:connectedAndroidTest
 
   wasm-test:
     runs-on: ubuntu-latest
