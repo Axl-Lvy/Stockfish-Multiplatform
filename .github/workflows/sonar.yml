@@ -35,19 +35,8 @@ jobs:
           restore-keys: ${{ runner.os }}-sonar
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
-      - name: Analyze (push)
-        if: github.event_name != 'pull_request'
+      - name: Analyze
         run: ./gradlew sonar --no-configuration-cache
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Analyze (pull request)
-        if: github.event_name == 'pull_request'
-        run: ./gradlew sonar --no-configuration-cache
-          -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
-          -Dsonar.pullrequest.branch=${{ github.head_ref }}
-          -Dsonar.pullrequest.base=${{ github.base_ref }}
-          -Dsonar.pullrequest.github.repository=${{ github.repository }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
