@@ -274,6 +274,10 @@ tasks.register("DownloadCompile") {
   )
 }
 
+tasks.named("jvmProcessResources") {
+  dependsOn("downloadNnueNetworks")
+}
+
 tasks.named("clean") {
   doLast {
     delete(fileTree("src") { include("**/resources/stockfish/**") })
