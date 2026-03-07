@@ -22,19 +22,11 @@ target_compile_definitions(stockfishjni PRIVATE
     NNUE_EMBEDDING_OFF
 )
 
-if(MSVC)
-    target_compile_options(stockfishjni PRIVATE /O2 /EHsc)
-else()
-    target_compile_options(stockfishjni PRIVATE -O3 -fexceptions)
-endif()
+target_compile_options(stockfishjni PRIVATE -O3 -fexceptions)
 
 target_include_directories(stockfishjni PRIVATE
     "${NATIVE_ROOT}/stockfish"
     ${JNI_INCLUDE_DIRS}
 )
 
-if(WIN32)
-    target_link_libraries(stockfishjni ${JNI_LIBRARIES})
-else()
-    target_link_libraries(stockfishjni ${JNI_LIBRARIES} pthread)
-endif()
+target_link_libraries(stockfishjni ${JNI_LIBRARIES} pthread)

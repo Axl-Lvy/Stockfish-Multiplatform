@@ -8,7 +8,6 @@ internal class JvmStockfishEngine : JniStockfishEngine() {
     val osName = System.getProperty("os.name").lowercase()
     val libName =
       when {
-        osName.contains("win") -> "stockfishjni.dll"
         osName.contains("mac") -> "libstockfishjni.dylib"
         else -> "libstockfishjni.so"
       }
