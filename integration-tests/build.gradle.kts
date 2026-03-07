@@ -27,6 +27,13 @@ kotlin {
               (static ?: mutableListOf()).apply {
                 add(project.rootDir.path)
                 add(project.projectDir.path)
+                // Serve library's WASM resources (stockfish-18.js/wasm)
+                add(
+                  project(":stockfish-multiplatform")
+                    .projectDir
+                    .resolve("src/wasmJsMain/resources")
+                    .absolutePath
+                )
               }
           }
       }
@@ -47,4 +54,26 @@ kotlin {
 dependencies {
   "androidDeviceTestImplementation"(libs.runner)
   "androidDeviceTestImplementation"(libs.core)
+}
+
+tasks.named("wasmJsBrowserTest") {
+  dependsOn(":stockfish-multiplatform:extractStockfishWasm")
+}
+
+afterEvaluate {
+  val libProject = project(":stockfish-multiplatform")
+  tasks
+    .withType<com.android.build.gradle.tasks.MergeSourceSetFolders>()
+    .matching { it.name.contains("Assets") }
+    .configureEach {
+      dependsOn(":stockfish-multiplatform:copyNnueToAndroid")
+      val assetsDir = libProject.layout.projectDirectory.dir("src/androidMain/assets")
+      sourceFolderInputs.from(assetsDir)
+      doLast {
+        copy {
+          from(assetsDir)
+          into(outputDir)
+        }
+      }
+    }
 }

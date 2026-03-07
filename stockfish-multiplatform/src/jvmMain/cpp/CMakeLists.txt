@@ -13,15 +13,20 @@ add_library(stockfishjni SHARED
     ${STOCKFISH_SOURCES}
 )
 
+set_target_properties(stockfishjni PROPERTIES
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED ON
+)
+
 target_compile_definitions(stockfishjni PRIVATE
     NNUE_EMBEDDING_OFF
 )
 
-target_compile_options(stockfishjni PRIVATE
-    -O3
-    -std=c++17
-    -fexceptions
-)
+if(MSVC)
+    target_compile_options(stockfishjni PRIVATE /O2 /EHsc)
+else()
+    target_compile_options(stockfishjni PRIVATE -O3 -fexceptions)
+endif()
 
 target_include_directories(stockfishjni PRIVATE
     "${NATIVE_ROOT}/stockfish"
