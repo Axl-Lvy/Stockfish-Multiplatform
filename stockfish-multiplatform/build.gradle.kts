@@ -292,7 +292,8 @@ afterEvaluate {
         }
       }
     }
-  tasks.matching { it.name.contains("merge") && it.name.contains("JniLibFolders") }
+  tasks
+    .matching { it.name.contains("merge") && it.name.contains("JniLibFolders") }
     .configureEach { dependsOn("compileAndroidNative") }
 }
 
