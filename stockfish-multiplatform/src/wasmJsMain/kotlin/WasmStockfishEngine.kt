@@ -25,7 +25,7 @@ internal class WasmRawEngine : RawEngine {
   private var pendingContinuation: Continuation<String>? = null
 
   fun start() {
-    val w = newWorker("stockfish/stockfish-18-lite.js".toJsString())
+    val w = newWorker("stockfish/stockfish-18.js".toJsString())
     onWorkerMessage(w) { data: JsString ->
       val line = data.toString()
       if (line.isNotEmpty()) {

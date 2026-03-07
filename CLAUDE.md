@@ -4,66 +4,89 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Kotlin Multiplatform library (`fr.axl-lvy:library`) that wraps the Stockfish chess engine for use on Android, iOS, JVM, and WebAssembly (browser) targets. Stockfish binaries are downloaded separately via Gradle tasks and bundled as resources.
+Stockfish Multiplatform is a Kotlin Multiplatform library that brings the Stockfish chess engine to **every platform**: Android, iOS, JVM (Linux/macOS/Windows), and WebAssembly (browser). It compiles Stockfish from source via CMake/NDK and bundles it as a native library, so consumers just add a single dependency and start using it.
+
+### Usage
+
+Add the dependency to your project:
+
+```kotlin
+implementation("fr.axl_lvy:stockfish-multiplatform:<version>")
+```
+
+### API
+
+The library exposes two levels of API through the `StockfishEngine` class (obtained via `createStockfish()`):
+
+- **Simple (high-level) API** — Covers most use cases: `setPosition()`, `search()`, `setOption()`, `stop()`. The `search()` function is a suspend function that blocks until the engine returns a `bestmove`, and provides structured results (`SearchResult`, `SearchInfo`, `Score`).
+- **Raw API** — For advanced users who need to send any UCI command directly to Stockfish: `postMessage(command)` sends a raw UCI string, and `addMessageListener(listener)` / `removeMessageListener(listener)` let you observe all raw engine output.
 
 ## Build Commands
 
 ```bash
 # Build the library
-./gradlew :library:build
+./gradlew :stockfish-multiplatform:build
 
-# Download all Stockfish binaries (required before building for the first time)
-./gradlew :library:downloadStockfishBinaries
+# Download Stockfish source and compile native libraries for all platforms
+./gradlew :stockfish-multiplatform:DownloadCompile
 
-# Download binaries for a specific platform
-./gradlew :library:downloadStockfishLinux
-./gradlew :library:downloadStockfishWindows
-./gradlew :library:downloadStockfishMacOS
-./gradlew :library:downloadStockfishAndroidArm64
-./gradlew :library:downloadStockfishAndroidArm32
-./gradlew :library:downloadStockfishIOS
-./gradlew :library:extractStockfishWasm
+# Compile JVM native library (requires CMake)
+./gradlew :stockfish-multiplatform:compileJvmNative
+
+# Compile Android native library (requires NDK)
+./gradlew :stockfish-multiplatform:compileAndroidNative
+
+# Download NNUE network files
+./gradlew :stockfish-multiplatform:downloadNnueNetworks
+
+# Download/extract platform-specific resources
+./gradlew :stockfish-multiplatform:downloadStockfishIOS
+./gradlew :stockfish-multiplatform:extractStockfishWasm
 
 # Run JVM tests
-./gradlew :library:jvmTest
+./gradlew :stockfish-multiplatform:jvmTest
 
 # Run Android instrumented tests (requires connected device/emulator)
-./gradlew :library:connectedAndroidTest
+./gradlew :stockfish-multiplatform:connectedAndroidTest
 
-# Clean (also removes downloaded Stockfish resources)
-./gradlew :library:clean
+# Clean (also removes downloaded Stockfish resources and compiled natives)
+./gradlew :stockfish-multiplatform:clean
 
 # Publish to Maven Central
-./gradlew :library:publishToMavenCentral
+./gradlew :stockfish-multiplatform:publishToMavenCentral
 ```
 
 ## Architecture
 
 The library uses Kotlin Multiplatform's `expect`/`actual` pattern:
 
-- **`commonMain/StockfishEngine.kt`** — The `StockfishEngine` interface (start, sendCommand, readLine, readAllLines, close) used by consumers.
-- **`commonMain/StockfishEngineFactory.kt`** — `expect fun createStockfishEngine(): StockfishEngine` — entry point for users.
+- **`commonMain/StockfishEngine.kt`** — The main `StockfishEngine` class exposing both the simple and raw APIs. Also defines `SearchResult`, `SearchInfo`, and `Score`.
+- **`commonMain/StockfishEngineFactory.kt`** — `expect suspend fun createStockfish(): StockfishEngine` — the entry point for consumers.
+- **`commonMain/RawEngine.kt`** — Internal `RawEngine` interface (send/readLine/close) that platform implementations provide.
+- **`commonMain/UciParser.kt`** — Parses UCI info lines and bestmove responses into structured data classes.
+- **`jvmCommon`** — Shared source set between `jvmMain` and `androidMain` (both use JNI).
 - **Platform `actual` implementations:**
-  - `jvmMain/StockfishEngineFactory.jvm.kt` + `JvmStockfishEngine.kt` — extracts the platform binary from JAR resources to a temp directory, spawns a `Process`.
-  - `androidMain/StockfishEngineFactory.android.kt` + `AndroidStockfishEngine.kt` — same approach but extracts to `context.cacheDir`; ABI detection (arm64-v8a / armeabi-v7a) selects the right binary.
-  - `androidMain/StockfishMultiplatformInitializer.kt` — `androidx.startup` initializer that captures `applicationContext` automatically; alternatively call `initializeStockfishMultiplatform(context)` manually.
-  - `iosMain/StockfishEngineFactory.ios.kt` — stub (`TODO`).
-  - `wasmJsMain/WasmStockfishEngine.kt` — stub (`TODO`); WASM files (stockfish.wasm, stockfish.js, stockfish.worker.js) are downloaded from npm package `stockfish.wasm@0.10.0`.
+  - `jvmMain` — Loads `libstockfishjni.so`/`.dylib`/`.dll` from JAR resources via JNI.
+  - `androidMain` — Same JNI approach; ABI detection (arm64-v8a / armeabi-v7a / x86_64); `androidx.startup` initializer captures `applicationContext` automatically.
+  - `iosMain` — stub (`TODO`).
+  - `wasmJsMain` — stub (`TODO`); WASM files downloaded from the `stockfish` npm package.
 
-## Stockfish Binaries
+## Stockfish Source & Binaries
 
-Binaries are **not committed** to the repo. They live under `library/src/<platform>Main/resources/stockfish/` and are downloaded by the Gradle download tasks. The `clean` task also deletes them.
+Stockfish is **compiled from source** for JVM and Android via CMake. The source is downloaded from the official Stockfish GitHub releases (`sf_18`) by `downloadStockfishSource` and placed in `cpp/stockfish/`.
 
-- JVM: `stockfish-windows-x86-64.exe`, `stockfish-macos-x86-64`, `stockfish-ubuntu-x86-64`
-- Android: `stockfish-arm64-v8a`, `stockfish-armeabi-v7a` (renamed from upstream armv8/armv7 tarballs)
-- iOS: `stockfish` (Apple Silicon binary)
-- WASM: `stockfish.wasm`, `stockfish.js`, `stockfish.worker.js`
+NNUE network files are downloaded separately and bundled as resources (JVM) or assets (Android).
 
-All binaries come from the official Stockfish GitHub releases (`sf_17.1`).
+- JVM: native library compiled via CMake → `src/jvmMain/resources/stockfish/libstockfishjni.so`
+- Android: native library compiled via NDK CMake → `src/androidMain/jniLibs/<abi>/libstockfishjni.so`
+- iOS: pre-built binary from official releases
+- WASM: `stockfish-18.js`, `stockfish-18.wasm` from npm
+
+Nothing is committed to the repo — all binaries/sources are generated by Gradle tasks and cleaned by `clean`.
 
 ## Package / Coordinates
 
 - Group: `fr.axl-lvy`
-- Artifact: `library`
+- Artifact: `stockfish-multiplatform`
 - Version: `0.1.0`
 - Package name: `fr.axl_lvy.stockfish_multiplatform`

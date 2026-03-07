@@ -49,7 +49,7 @@ kotlin {
               }
           }
       }
-      testTask { useKarma { useFirefox() } }
+      testTask { useKarma { useFirefoxHeadless() } }
     }
     binaries.executable()
   }
@@ -82,7 +82,7 @@ mavenPublishing {
 
   signAllPublications()
 
-  coordinates(group.toString(), "library", version.toString())
+  coordinates(group.toString(), "stockfish-multiplatform", version.toString())
 
   pom {
     name = "Stockfish Multiplatform"
@@ -253,8 +253,8 @@ tasks.register("extractStockfishWasm") {
       into(layout.buildDirectory.dir("stockfish-js-extracted"))
     }
     copy {
-      from(layout.buildDirectory.file("stockfish-js-extracted/package/bin/stockfish-18-lite.js"))
-      from(layout.buildDirectory.file("stockfish-js-extracted/package/bin/stockfish-18-lite.wasm"))
+      from(layout.buildDirectory.file("stockfish-js-extracted/package/bin/stockfish-18.js"))
+      from(layout.buildDirectory.file("stockfish-js-extracted/package/bin/stockfish-18.wasm"))
       into(layout.projectDirectory.dir("src/wasmJsMain/resources/stockfish"))
     }
     delete(layout.buildDirectory.dir("stockfish-js-extracted"))
@@ -272,6 +272,24 @@ tasks.register("DownloadCompile") {
     "downloadStockfishIOS",
     "extractStockfishWasm",
   )
+}
+
+tasks.named("jvmProcessResources") { dependsOn("downloadNnueNetworks", "compileJvmNative") }
+
+afterEvaluate {
+  tasks
+    .withType<com.android.build.gradle.tasks.MergeSourceSetFolders>()
+    .matching { it.name.contains("Assets") }
+    .configureEach {
+      dependsOn("copyNnueToAndroid")
+      sourceFolderInputs.from(layout.projectDirectory.dir("src/androidMain/assets"))
+      doLast {
+        copy {
+          from(layout.projectDirectory.dir("src/androidMain/assets"))
+          into(outputDir)
+        }
+      }
+    }
 }
 
 tasks.named("clean") {
