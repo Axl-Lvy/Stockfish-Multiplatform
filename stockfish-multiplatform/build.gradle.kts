@@ -188,14 +188,14 @@ tasks.register("compileJvmNative") {
     val destDir = layout.projectDirectory.dir("src/jvmMain/resources/stockfish").asFile
     destDir.mkdirs()
     copy {
-      from(buildDir) { include(libName) }
+      from(fileTree(buildDir) { include("**/$libName") })
       into(destDir)
     }
     val androidHostTestJniLibsDir =
       layout.projectDirectory.dir("src/androidHostTest/jniLibs").asFile
     androidHostTestJniLibsDir.mkdirs()
     copy {
-      from(buildDir) { include(libName) }
+      from(fileTree(buildDir) { include("**/$libName") })
       into(androidHostTestJniLibsDir)
     }
   }
