@@ -41,7 +41,7 @@ jobs:
             api-level: 30
             target: google_apis
           - runner: macos-latest
-            arch: default
+            arch: arm64-v8a
             api-level: 35
             target: google_apis
     runs-on: ${{ matrix.runner }}
