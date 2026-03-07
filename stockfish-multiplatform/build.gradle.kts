@@ -49,7 +49,7 @@ kotlin {
               }
           }
       }
-      testTask { useKarma { useFirefox() } }
+      testTask { useKarma { useFirefoxHeadless() } }
     }
     binaries.executable()
   }
