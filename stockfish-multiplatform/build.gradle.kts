@@ -274,12 +274,11 @@ tasks.register("DownloadCompile") {
   )
 }
 
-tasks.named("jvmProcessResources") {
-  dependsOn("downloadNnueNetworks", "compileJvmNative")
-}
+tasks.named("jvmProcessResources") { dependsOn("downloadNnueNetworks", "compileJvmNative") }
 
 afterEvaluate {
-  tasks.withType<com.android.build.gradle.tasks.MergeSourceSetFolders>()
+  tasks
+    .withType<com.android.build.gradle.tasks.MergeSourceSetFolders>()
     .matching { it.name.contains("Assets") }
     .configureEach {
       dependsOn("copyNnueToAndroid")
