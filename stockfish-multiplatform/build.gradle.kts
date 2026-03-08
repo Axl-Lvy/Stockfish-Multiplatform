@@ -16,7 +16,7 @@ ktfmt { googleStyle() }
 
 group = "fr.axl-lvy"
 
-version = "0.1.1"
+version = "0.1.0-alpha.3"
 
 kotlin {
   jvm()
