@@ -121,10 +121,12 @@ static void handlePosition(std::istringstream& is) {
     while (is >> token)
         moves.push_back(token);
 
+    g_engine->wait_for_search_finished();
     g_engine->set_position(fen, moves);
 }
 
 static void handleGo(std::istringstream& is) {
+    g_engine->wait_for_search_finished();
     Search::LimitsType limits = UCIEngine::parse_limits(is);
     g_engine->go(limits);
 }

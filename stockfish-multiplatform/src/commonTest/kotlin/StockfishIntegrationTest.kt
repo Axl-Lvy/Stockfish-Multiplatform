@@ -10,17 +10,11 @@ import kotlinx.coroutines.test.runTest
 
 private val MOVE_PATTERN = "[a-h][1-8][a-h][1-8].*"
 
-private var cachedEngine: StockfishEngine? = null
-
-private suspend fun engine(): StockfishEngine {
-  return cachedEngine ?: createStockfish().also { cachedEngine = it }
-}
-
 class StockfishIntegrationTest {
 
   @Test
   fun searchFromStartposReturnsAValidMove() = runTest {
-    val engine = engine()
+    val engine = getStockfish()
     engine.setPosition()
     val result = engine.search(depth = 10)
 
@@ -30,7 +24,7 @@ class StockfishIntegrationTest {
 
   @Test
   fun searchCollectsInfoLinesWithIncreasingDepth() = runTest {
-    val engine = engine()
+    val engine = getStockfish()
     engine.setPosition()
     val result = engine.search(depth = 8)
 
@@ -41,7 +35,7 @@ class StockfishIntegrationTest {
 
   @Test
   fun searchFromFenPosition() = runTest {
-    val engine = engine()
+    val engine = getStockfish()
     val fen = "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2"
     engine.setPosition(fen = fen)
     val result = engine.search(depth = 10)
@@ -51,7 +45,7 @@ class StockfishIntegrationTest {
 
   @Test
   fun searchFromStartposWithMoves() = runTest {
-    val engine = engine()
+    val engine = getStockfish()
     engine.setPosition(moves = listOf("e2e4", "e7e5"))
     val result = engine.search(depth = 10)
 
@@ -60,7 +54,7 @@ class StockfishIntegrationTest {
 
   @Test
   fun searchWithMovetime() = runTest {
-    val engine = engine()
+    val engine = getStockfish()
     engine.setPosition()
     val result = engine.search(moveTime = 500)
 
@@ -69,7 +63,7 @@ class StockfishIntegrationTest {
 
   @Test
   fun searchWithNodesLimit() = runTest {
-    val engine = engine()
+    val engine = getStockfish()
     engine.setPosition()
     val result = engine.search(nodes = 10000)
 
@@ -78,7 +72,7 @@ class StockfishIntegrationTest {
 
   @Test
   fun onInfoCallbackReceivesEveryInfoLine() = runTest {
-    val engine = engine()
+    val engine = getStockfish()
     engine.setPosition()
     val callbackInfos = mutableListOf<SearchInfo>()
 
@@ -89,7 +83,7 @@ class StockfishIntegrationTest {
 
   @Test
   fun infoLinesContainScores() = runTest {
-    val engine = engine()
+    val engine = getStockfish()
     engine.setPosition()
     val result = engine.search(depth = 8)
 
@@ -98,7 +92,7 @@ class StockfishIntegrationTest {
 
   @Test
   fun setOptionMultiPvProducesMultiplePrincipalVariations() = runTest {
-    val engine = engine()
+    val engine = getStockfish()
     engine.setOption("MultiPV", "3")
     engine.setPosition()
     val result = engine.search(depth = 8)
@@ -111,7 +105,7 @@ class StockfishIntegrationTest {
 
   @Test
   fun consecutiveSearchesWork() = runTest {
-    val engine = engine()
+    val engine = getStockfish()
     engine.setPosition()
     val result1 = engine.search(depth = 5)
 
@@ -124,7 +118,7 @@ class StockfishIntegrationTest {
 
   @Test
   fun listenerReceivesRawOutputDuringSearch() = runTest {
-    val engine = engine()
+    val engine = getStockfish()
     val received = mutableListOf<String>()
     val listener: (String) -> Unit = { received.add(it) }
     engine.addMessageListener(listener)
@@ -140,7 +134,7 @@ class StockfishIntegrationTest {
 
   @Test
   fun mateInOneIsDetected() = runTest {
-    val engine = engine()
+    val engine = getStockfish()
     engine.setPosition(fen = "6k1/5ppp/8/8/8/8/5PPP/4Q1K1 w - - 0 1")
     val result = engine.search(depth = 10)
 

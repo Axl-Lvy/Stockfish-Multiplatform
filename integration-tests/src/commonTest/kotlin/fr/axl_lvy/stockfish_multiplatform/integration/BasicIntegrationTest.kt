@@ -1,6 +1,6 @@
 package fr.axl_lvy.stockfish_multiplatform.integration
 
-import fr.axl_lvy.stockfish_multiplatform.createStockfish
+import fr.axl_lvy.stockfish_multiplatform.getStockfish
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.string.shouldMatch
 import kotlin.test.Test
@@ -12,7 +12,7 @@ class BasicIntegrationTest {
 
   @Test
   fun engineStartsAndSearches() = runTest {
-    val engine = createStockfish()
+    val engine = getStockfish()
     engine.setPosition()
     val result = engine.search(depth = 5)
 
@@ -22,7 +22,7 @@ class BasicIntegrationTest {
 
   @Test
   fun engineSearchesFromFen() = runTest {
-    val engine = createStockfish()
+    val engine = getStockfish()
     val fen = "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2"
     engine.setPosition(fen = fen)
     val result = engine.search(depth = 5)

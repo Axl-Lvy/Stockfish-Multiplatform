@@ -1,5 +1,5 @@
 package fr.axl_lvy.stockfish_multiplatform
 
-actual suspend fun createStockfish(): fr.axl_lvy.stockfish_multiplatform.StockfishEngine {
+internal actual suspend fun createStockfishInternal(): StockfishEngine {
   TODO("Not yet implemented")
 }

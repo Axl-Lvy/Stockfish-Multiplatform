@@ -59,7 +59,7 @@ kotlin {
     androidMain.get().dependsOn(jvmCommon)
 
     commonMain.dependencies {
-      // put your multiplatform dependencies here
+      implementation(libs.kotlinx.coroutines.core)
     }
     commonTest.dependencies {
       implementation(libs.kotlin.test)
@@ -136,6 +136,7 @@ tasks.register<Download>("downloadStockfishSource") {
   src("https://github.com/official-stockfish/Stockfish/archive/refs/tags/sf_18.tar.gz")
   dest(layout.buildDirectory.file("stockfish-src.tar.gz"))
   onlyIfModified(true)
+  outputs.dir(layout.projectDirectory.dir("cpp/stockfish"))
   doLast {
     copy {
       from(tarTree(resources.gzip(layout.buildDirectory.file("stockfish-src.tar.gz")))) {
@@ -178,6 +179,12 @@ tasks.register("compileJvmNative") {
   description = "Compile JVM native library using CMake on the host machine"
   group = "Resources"
   dependsOn("downloadStockfishSource")
+  inputs.dir(layout.projectDirectory.dir("src/jvmMain/cpp"))
+  inputs.dir(layout.projectDirectory.dir("cpp/stockfish")).optional()
+  val jvmLibName =
+    if (System.getProperty("os.name").lowercase().contains("mac")) "libstockfishjni.dylib"
+    else "libstockfishjni.so"
+  outputs.file(layout.projectDirectory.file("src/jvmMain/resources/stockfish/$jvmLibName"))
   doLast {
     val buildDir = layout.buildDirectory.dir("jvm-native").get().asFile
     buildDir.mkdirs()
@@ -345,6 +352,9 @@ tasks.register("compileAndroidNative") {
   description = "Compile native library for Android using NDK CMake toolchain"
   group = "Resources"
   dependsOn("downloadStockfishSource")
+  inputs.dir(layout.projectDirectory.dir("src/androidMain/cpp"))
+  inputs.dir(layout.projectDirectory.dir("cpp/stockfish")).optional()
+  outputs.dir(layout.projectDirectory.dir("src/androidMain/jniLibs"))
   doLast {
     val localProps = Properties()
     val localPropertiesFile = rootProject.file("local.properties")

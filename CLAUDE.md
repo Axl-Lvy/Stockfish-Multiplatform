@@ -16,10 +16,10 @@ implementation("fr.axl_lvy:stockfish-multiplatform:<version>")
 
 ### API
 
-The library exposes two levels of API through the `StockfishEngine` class (obtained via `createStockfish()`):
+The library exposes two levels of API through the `StockfishEngine` class (obtained via `getStockfish()`, a singleton — the native layer uses global state):
 
 - **Simple (high-level) API** — Covers most use cases: `setPosition()`, `search()`, `setOption()`, `stop()`. The `search()` function is a suspend function that blocks until the engine returns a `bestmove`, and provides structured results (`SearchResult`, `SearchInfo`, `Score`).
-- **Raw API** — For advanced users who need to send any UCI command directly to Stockfish: `postMessage(command)` sends a raw UCI string, and `addMessageListener(listener)` / `removeMessageListener(listener)` let you observe all raw engine output.
+- **Raw API** — For advanced users who need to send any UCI command directly to Stockfish: `postMessage(command)` (suspend, mutex-guarded) sends a raw UCI string, `unsafePostMessage(command)` sends without mutex, and `addMessageListener(listener)` / `removeMessageListener(listener)` let you observe all raw engine output.
 
 ## Build Commands
 
@@ -61,7 +61,7 @@ The library exposes two levels of API through the `StockfishEngine` class (obtai
 The library uses Kotlin Multiplatform's `expect`/`actual` pattern:
 
 - **`commonMain/StockfishEngine.kt`** — The main `StockfishEngine` class exposing both the simple and raw APIs. Also defines `SearchResult`, `SearchInfo`, and `Score`.
-- **`commonMain/StockfishEngineFactory.kt`** — `expect suspend fun createStockfish(): StockfishEngine` — the entry point for consumers.
+- **`commonMain/StockfishEngineFactory.kt`** — `suspend fun getStockfish(): StockfishEngine` (singleton) — the entry point for consumers. Wraps `internal expect suspend fun createStockfishInternal()`.
 - **`commonMain/RawEngine.kt`** — Internal `RawEngine` interface (send/readLine/close) that platform implementations provide.
 - **`commonMain/UciParser.kt`** — Parses UCI info lines and bestmove responses into structured data classes.
 - **`jvmCommon`** — Shared source set between `jvmMain` and `androidMain` (both use JNI).

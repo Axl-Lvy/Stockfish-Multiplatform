@@ -218,6 +218,27 @@ class StockfishEnginePostMessageTest {
   }
 }
 
+class StockfishEngineUnsafePostMessageTest {
+
+  @Test
+  fun unsafePostMessageSendsRawCommand() = runTest {
+    val (engine, raw) = createFakeEngine()
+
+    engine.unsafePostMessage("ucinewgame")
+
+    raw.sentCommands.last() shouldBe "ucinewgame"
+  }
+
+  @Test
+  fun unsafePostMessageSendsArbitraryString() = runTest {
+    val (engine, raw) = createFakeEngine()
+
+    engine.unsafePostMessage("bench 16 1 13")
+
+    raw.sentCommands.last() shouldBe "bench 16 1 13"
+  }
+}
+
 class StockfishEngineListenerTest {
 
   @Test
@@ -297,5 +318,14 @@ class StockfishEngineCloseTest {
     engine.close()
 
     raw.sentCommands.size shouldBe commandsAfterFirstClose
+  }
+
+  @Test
+  fun isClosedReturnsTrueAfterClose() = runTest {
+    val (engine, _) = createFakeEngine()
+
+    engine.isClosed shouldBe false
+    engine.close()
+    engine.isClosed shouldBe true
   }
 }
