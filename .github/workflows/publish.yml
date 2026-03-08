@@ -6,9 +6,16 @@ permissions:
   contents: read
   packages: write
 jobs:
-  publish:
-    name: Release build and publish
-    runs-on: macOS-latest
+  build-native:
+    name: Build JVM native (${{ matrix.os }})
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            lib: libstockfishjni.so
+          - os: macos-latest
+            lib: libstockfishjni.dylib
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Check out code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -17,6 +24,35 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: 21
+      - name: Compile JVM native library
+        run: ./gradlew :stockfish-multiplatform:compileJvmNative --no-configuration-cache
+      - name: Upload native library
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: native-${{ matrix.os }}
+          path: stockfish-multiplatform/src/jvmMain/resources/stockfish/${{ matrix.lib }}
+          retention-days: 1
+
+  publish:
+    name: Release build and publish
+    needs: build-native
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: 'zulu'
+          java-version: 21
+      - name: Download all native libraries
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          path: stockfish-multiplatform/src/jvmMain/resources/stockfish/
+          pattern: native-*
+          merge-multiple: true
+      - name: Verify native libraries
+        run: ls -la stockfish-multiplatform/src/jvmMain/resources/stockfish/
       - name: Publish to GitHub Packages
         run: ./gradlew publishAllPublicationsToGitHubPackagesRepository --no-configuration-cache
         env:
