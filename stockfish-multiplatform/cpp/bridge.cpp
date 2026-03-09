@@ -10,6 +10,7 @@
 
 #include "bitboard.h"
 #include "engine.h"
+#include "evaluate.h"
 #include "misc.h"
 #include "position.h"
 #include "search.h"
@@ -23,7 +24,9 @@ using namespace Stockfish;
 // (e.g. for null-pointer checks in JIT code), so losing that handler causes
 // fatal crashes. This RAII guard saves and restores critical signal handlers
 // around any Stockfish call that might trigger the registration.
+// On Windows, sigaction/SIGBUS don't exist and the issue doesn't apply.
 struct JvmSignalGuard {
+#ifndef _WIN32
     struct sigaction saved_sigsegv;
     struct sigaction saved_sigbus;
     JvmSignalGuard() {
@@ -34,6 +37,10 @@ struct JvmSignalGuard {
         sigaction(SIGSEGV, &saved_sigsegv, nullptr);
         sigaction(SIGBUS, &saved_sigbus, nullptr);
     }
+#else
+    JvmSignalGuard() {}
+    ~JvmSignalGuard() {}
+#endif
 };
 
 static Stockfish::Engine*        g_engine   = nullptr;
@@ -173,16 +180,33 @@ Java_fr_axl_1lvy_stockfish_1multiplatform_JniStockfishEngine_startEngine(
         std::queue<std::string>().swap(g_queue);
     }
 
+    std::string nnueDir;
     std::optional<std::string> path = std::nullopt;
     if (nnuePath != nullptr) {
         const char* str = env->GetStringUTFChars(nnuePath, nullptr);
+        nnueDir = std::string(str);
         // Engine expects argv[0]-style path; get_binary_directory extracts the directory part
-        path = std::string(str) + "/stockfish";
+        path = nnueDir + "/stockfish";
         env->ReleaseStringUTFChars(nnuePath, str);
     }
 
     g_engine = new Engine(path);
     registerCallbacks();
+
+#ifdef _MSC_VER
+    // On MSVC, get_binary_directory() uses _get_pgmptr() which returns the host
+    // executable path (e.g. java.exe) instead of the NNUE directory we passed.
+    // Work around this by setting EvalFile options to absolute paths, which
+    // triggers a network reload from the correct directory.
+    if (!nnueDir.empty()) {
+        std::string bigPath   = nnueDir + "/" + EvalFileDefaultNameBig;
+        std::string smallPath = nnueDir + "/" + EvalFileDefaultNameSmall;
+        std::istringstream isBig("name EvalFile value " + bigPath);
+        g_engine->get_options().setoption(isBig);
+        std::istringstream isSmall("name EvalFileSmall value " + smallPath);
+        g_engine->get_options().setoption(isSmall);
+    }
+#endif
 }
 
 JNIEXPORT void JNICALL

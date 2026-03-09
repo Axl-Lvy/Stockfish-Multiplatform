@@ -20,13 +20,23 @@ set_target_properties(stockfishjni PROPERTIES
 
 target_compile_definitions(stockfishjni PRIVATE
     NNUE_EMBEDDING_OFF
+    NDEBUG
+    USE_POPCNT
 )
 
-target_compile_options(stockfishjni PRIVATE -O3 -fexceptions)
+if(MSVC)
+    target_compile_options(stockfishjni PRIVATE /O2 /EHsc)
+else()
+    target_compile_options(stockfishjni PRIVATE -O3 -fexceptions)
+endif()
 
 target_include_directories(stockfishjni PRIVATE
     "${NATIVE_ROOT}/stockfish"
     ${JNI_INCLUDE_DIRS}
 )
 
-target_link_libraries(stockfishjni ${JNI_LIBRARIES} pthread)
+if(MSVC)
+    target_link_libraries(stockfishjni ${JNI_LIBRARIES})
+else()
+    target_link_libraries(stockfishjni ${JNI_LIBRARIES} pthread)
+endif()

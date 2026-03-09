@@ -172,16 +172,88 @@ tasks.register("downloadNnueNetworks") {
   dependsOn("downloadNnueBig", "downloadNnueSmall")
 }
 
+// Patch Stockfish source for MSVC compatibility (8MB thread stack size)
+tasks.register("patchStockfishSource") {
+  description = "Patch Stockfish source for MSVC compatibility"
+  group = "Resources"
+  dependsOn("downloadStockfishSource")
+  val threadHeader = layout.projectDirectory.file("cpp/stockfish/thread_win32_osx.h")
+  inputs.file(threadHeader)
+  outputs.file(threadHeader)
+  onlyIf { System.getProperty("os.name").lowercase().contains("win") }
+  doLast {
+    val file = threadHeader.asFile
+    if (file.exists()) {
+      val original = file.readText()
+      if (!original.contains("_MSC_VER")) {
+        val patched =
+          original.replace(
+            "#else  // Default case: use STL classes\n\nnamespace Stockfish {\n\nusing NativeThread = std::thread;\n\n}  // namespace Stockfish",
+            """#elif defined(_MSC_VER)
+
+    #include <functional>
+    #include <windows.h>
+
+namespace Stockfish {
+
+class NativeThread {
+    HANDLE thread;
+
+    static constexpr size_t TH_STACK_SIZE = 8 * 1024 * 1024;
+
+   public:
+    template<class Function, class... Args>
+    explicit NativeThread(Function&& fun, Args&&... args) {
+        auto func = new std::function<void()>(
+          std::bind(std::forward<Function>(fun), std::forward<Args>(args)...));
+
+        thread = CreateThread(
+          nullptr, TH_STACK_SIZE,
+          [](LPVOID ptr) -> DWORD {
+              auto f = reinterpret_cast<std::function<void()>*>(ptr);
+              (*f)();
+              delete f;
+              return 0;
+          },
+          func, STACK_SIZE_PARAM_IS_A_RESERVATION, nullptr);
+    }
+
+    void join() {
+        WaitForSingleObject(thread, INFINITE);
+        CloseHandle(thread);
+    }
+};
+
+}  // namespace Stockfish
+
+#else  // Default case: use STL classes
+
+namespace Stockfish {
+
+using NativeThread = std::thread;
+
+}  // namespace Stockfish""",
+          )
+        file.writeText(patched)
+      }
+    }
+  }
+}
+
 // Compile JVM native library using CMake on the host machine
 tasks.register("compileJvmNative") {
   description = "Compile JVM native library using CMake on the host machine"
   group = "Resources"
-  dependsOn("downloadStockfishSource")
+  dependsOn("patchStockfishSource")
   inputs.dir(layout.projectDirectory.dir("src/jvmMain/cpp"))
   inputs.dir(layout.projectDirectory.dir("cpp/stockfish")).optional()
+  val osName = System.getProperty("os.name").lowercase()
   val jvmLibName =
-    if (System.getProperty("os.name").lowercase().contains("mac")) "libstockfishjni.dylib"
-    else "libstockfishjni.so"
+    when {
+      osName.contains("mac") -> "libstockfishjni.dylib"
+      osName.contains("win") -> "stockfishjni.dll"
+      else -> "libstockfishjni.so"
+    }
   outputs.file(layout.projectDirectory.file("src/jvmMain/resources/stockfish/$jvmLibName"))
   doLast {
     val buildDir = layout.buildDirectory.dir("jvm-native").get().asFile
@@ -195,6 +267,7 @@ tasks.register("compileJvmNative") {
     val libName =
       when {
         osName.contains("mac") -> "libstockfishjni.dylib"
+        osName.contains("win") -> "stockfishjni.dll"
         else -> "libstockfishjni.so"
       }
     val nativeLib = fileTree(buildDir) { include("**/$libName") }.files.first()

@@ -9,6 +9,7 @@ internal class JvmStockfishEngine : JniStockfishEngine() {
     val libName =
       when {
         osName.contains("mac") -> "libstockfishjni.dylib"
+        osName.contains("win") -> "stockfishjni.dll"
         else -> "libstockfishjni.so"
       }
     val tempDir = createTempDirectory("stockfishjni").toFile()
