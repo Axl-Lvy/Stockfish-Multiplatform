@@ -7,7 +7,14 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 import kotlin.js.ExperimentalWasmJsInterop
 
-@JsFun("(url) => new Worker(url)") private external fun newWorker(url: JsString): JsAny
+@JsFun(
+  """() => {
+  var jsUrl = new URL('../../../node_modules/stockfish-multiplatform-wasm-js/stockfish/stockfish-18.js', import.meta.url);
+  var wasmUrl = new URL('../../../node_modules/stockfish-multiplatform-wasm-js/stockfish/stockfish-18.wasm', import.meta.url);
+  return new Worker(jsUrl.href + '#' + wasmUrl.href);
+}"""
+)
+private external fun createStockfishWorker(): JsAny
 
 @JsFun(
   "(worker, callback) => { worker.onmessage = (e) => { var d = e.data; if (typeof d === 'string') callback(d); }; }"
@@ -25,7 +32,7 @@ internal class WasmRawEngine : RawEngine {
   private var pendingContinuation: Continuation<String>? = null
 
   fun start() {
-    val w = newWorker("stockfish/stockfish-18.js".toJsString())
+    val w = createStockfishWorker()
     onWorkerMessage(w) { data: JsString ->
       val line = data.toString()
       if (line.isNotEmpty()) {
