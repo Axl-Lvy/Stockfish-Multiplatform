@@ -9,6 +9,17 @@ private val factoryMutex = Mutex()
 private var cachedEngine: StockfishEngine? = null
 
 /**
+ * Called by [StockfishEngine.close] to eagerly clear the cached reference, so the closed engine can
+ * be garbage-collected immediately.
+ */
+internal fun clearCachedEngine(engine: StockfishEngine) {
+  // Compare identity — only clear if it's still the same instance.
+  if (cachedEngine === engine) {
+    cachedEngine = null
+  }
+}
+
+/**
  * Returns the singleton [StockfishEngine] instance.
  *
  * The native Stockfish bridge uses global static state — only one engine can exist per process.
@@ -17,7 +28,7 @@ private var cachedEngine: StockfishEngine? = null
  *
  * Thread-safe: concurrent callers will never create two engines.
  */
-suspend fun getStockfish(): StockfishEngine = factoryMutex.withLock {
-  cachedEngine?.takeUnless { it.isClosed }
-    ?: createStockfishInternal().also { cachedEngine = it }
-}
+suspend fun getStockfish(): StockfishEngine =
+  factoryMutex.withLock {
+    cachedEngine?.takeUnless { it.isClosed } ?: createStockfishInternal().also { cachedEngine = it }
+  }

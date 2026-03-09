@@ -12,22 +12,24 @@ class BasicIntegrationTest {
 
   @Test
   fun engineStartsAndSearches() = runTest {
-    val engine = getStockfish()
-    engine.setPosition()
-    val result = engine.search(depth = 5)
+    getStockfish().use { engine ->
+      engine.setPosition()
+      val result = engine.search(depth = 5)
 
-    result.bestMove shouldMatch MOVE_PATTERN
-    result.info.shouldNotBeEmpty()
+      result.bestMove shouldMatch MOVE_PATTERN
+      result.info.shouldNotBeEmpty()
+    }
   }
 
   @Test
   fun engineSearchesFromFen() = runTest {
-    val engine = getStockfish()
-    val fen = "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2"
-    engine.setPosition(fen = fen)
-    val result = engine.search(depth = 5)
+    getStockfish().use { engine ->
+      val fen = "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2"
+      engine.setPosition(fen = fen)
+      val result = engine.search(depth = 5)
 
-    result.bestMove shouldMatch MOVE_PATTERN
-    result.info.shouldNotBeEmpty()
+      result.bestMove shouldMatch MOVE_PATTERN
+      result.info.shouldNotBeEmpty()
+    }
   }
 }

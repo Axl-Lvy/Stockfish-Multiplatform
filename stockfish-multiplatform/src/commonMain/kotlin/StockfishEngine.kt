@@ -17,7 +17,6 @@ import kotlinx.coroutines.sync.withLock
  * coroutine/thread.
  *
  * ## Two API levels
- *
  * - **Simple API** — [setPosition], [search], [setOption], [stop]. Covers most use cases.
  * - **Raw API** — [postMessage] / [unsafePostMessage] to send arbitrary UCI strings, and
  *   [addMessageListener] / [removeMessageListener] to observe raw engine output.
@@ -33,7 +32,8 @@ class StockfishEngine internal constructor(private val raw: RawEngine) : AutoClo
    *
    * After close, calling [getStockfish] will create a fresh engine instance.
    */
-  val isClosed: Boolean get() = closed
+  val isClosed: Boolean
+    get() = closed
 
   internal suspend fun init() {
     raw.send("uci")
@@ -46,8 +46,8 @@ class StockfishEngine internal constructor(private val raw: RawEngine) : AutoClo
    * Send any UCI command directly to the engine, serialized by the engine mutex.
    *
    * This is the safe variant: it suspends until the mutex is available, preventing concurrent
-   * access to the native engine. For fire-and-forget commands that must not wait (e.g. "stop"),
-   * use [unsafePostMessage] instead.
+   * access to the native engine. For fire-and-forget commands that must not wait (e.g. "stop"), use
+   * [unsafePostMessage] instead.
    *
    * @param command the raw UCI command string (e.g. `"ucinewgame"`, `"bench 16 1 13"`)
    */
@@ -122,9 +122,9 @@ class StockfishEngine internal constructor(private val raw: RawEngine) : AutoClo
   /**
    * Search the current position.
    *
-   * Blocks (suspends) until the engine emits `"bestmove"`. The engine mutex is held for the
-   * entire duration, so other mutex-guarded calls ([setPosition], [setOption], [postMessage])
-   * will queue behind a running search.
+   * Blocks (suspends) until the engine emits `"bestmove"`. The engine mutex is held for the entire
+   * duration, so other mutex-guarded calls ([setPosition], [setOption], [postMessage]) will queue
+   * behind a running search.
    *
    * To cancel a search early, call [stop] from another coroutine — it is intentionally unguarded
    * and will cause the engine to emit `"bestmove"` promptly, releasing the mutex.
@@ -143,44 +143,45 @@ class StockfishEngine internal constructor(private val raw: RawEngine) : AutoClo
     moveTime: Long? = null,
     nodes: Long? = null,
     onInfo: ((SearchInfo) -> Unit)? = null,
-  ): SearchResult = engineMutex.withLock {
-    val cmd = buildString {
-      append("go")
-      depth?.let { append(" depth $it") }
-      moveTime?.let { append(" movetime $it") }
-      nodes?.let { append(" nodes $it") }
-    }
-    raw.send(cmd)
-
-    val infos = mutableListOf<SearchInfo>()
-    var bestMove = ""
-    var ponderMove: String? = null
-
-    readUntil { line ->
-      when {
-        line.startsWith("info ") && "score" in line -> {
-          val info = UciParser.parseInfo(line)
-          infos.add(info)
-          onInfo?.invoke(info)
-        }
-        line.startsWith("bestmove") -> {
-          val (best, ponder) = UciParser.parseBestMove(line)
-          bestMove = best
-          ponderMove = ponder
-        }
+  ): SearchResult =
+    engineMutex.withLock {
+      val cmd = buildString {
+        append("go")
+        depth?.let { append(" depth $it") }
+        moveTime?.let { append(" movetime $it") }
+        nodes?.let { append(" nodes $it") }
       }
-      line.startsWith("bestmove")
-    }
+      raw.send(cmd)
 
-    SearchResult(bestMove = bestMove, ponderMove = ponderMove, info = infos)
-  }
+      val infos = mutableListOf<SearchInfo>()
+      var bestMove = ""
+      var ponderMove: String? = null
+
+      readUntil { line ->
+        when {
+          line.startsWith("info ") && "score" in line -> {
+            val info = UciParser.parseInfo(line)
+            infos.add(info)
+            onInfo?.invoke(info)
+          }
+          line.startsWith("bestmove") -> {
+            val (best, ponder) = UciParser.parseBestMove(line)
+            bestMove = best
+            ponderMove = ponder
+          }
+        }
+        line.startsWith("bestmove")
+      }
+
+      SearchResult(bestMove = bestMove, ponderMove = ponderMove, info = infos)
+    }
 
   /**
    * Stop a running search early.
    *
-   * Intentionally **not** guarded by the engine mutex so it can be called from a separate
-   * coroutine while [search] holds the lock. The in-progress [search] call will still return a
-   * [SearchResult] once the engine emits `"bestmove"`.
+   * Intentionally **not** guarded by the engine mutex so it can be called from a separate coroutine
+   * while [search] holds the lock. The in-progress [search] call will still return a [SearchResult]
+   * once the engine emits `"bestmove"`.
    */
   fun stop() {
     raw.send("stop")
@@ -190,14 +191,15 @@ class StockfishEngine internal constructor(private val raw: RawEngine) : AutoClo
    * Shut down the engine and release all native resources. Idempotent — subsequent calls are
    * no-ops.
    *
-   * After close, [isClosed] returns `true` and the next call to [getStockfish] will create a
-   * fresh engine instance.
+   * After close, [isClosed] returns `true` and the next call to [getStockfish] will create a fresh
+   * engine instance.
    */
   override fun close() {
     if (!closed) {
       raw.send("quit")
       raw.close()
       closed = true
+      clearCachedEngine(this)
     }
   }
 
@@ -245,9 +247,7 @@ data class SearchInfo(
   val raw: String,
 )
 
-/**
- * Engine evaluation score from the side to move's perspective.
- */
+/** Engine evaluation score from the side to move's perspective. */
 sealed interface Score {
   /**
    * Centipawn evaluation.

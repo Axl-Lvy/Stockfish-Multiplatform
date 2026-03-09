@@ -45,26 +45,24 @@ class StockfishEngineConcurrencyTest {
   @Test
   fun concurrentSetPositionShouldNotCrash() =
     runTest(timeout = 60.seconds) {
-      val engine = getStockfish()
-
-      withContext(Dispatchers.Default) {
-        repeat(50) { batch ->
-          // Launch 6 coroutines that all call setPosition at the same time on different threads.
-          val jobs =
-            (0 until 6).map { j ->
-              val idx = (batch * 6 + j) % positions.size
-              launch { engine.setPosition(fen = positions[idx]) }
-            }
-          jobs.joinAll()
+      getStockfish().use { engine ->
+        withContext(Dispatchers.Default) {
+          repeat(50) { batch ->
+            // Launch 6 coroutines that all call setPosition at the same time on different threads.
+            val jobs =
+              (0 until 6).map { j ->
+                val idx = (batch * 6 + j) % positions.size
+                launch { engine.setPosition(fen = positions[idx]) }
+              }
+            jobs.joinAll()
+          }
         }
+
+        // Prove the engine is still functional after 300 concurrent setPosition calls.
+        engine.setPosition()
+        val result = engine.search(depth = 5)
+        result.bestMove shouldMatch MOVE_PATTERN
       }
-
-      // Prove the engine is still functional after 300 concurrent setPosition calls.
-      engine.setPosition()
-      val result = engine.search(depth = 5)
-      result.bestMove shouldMatch MOVE_PATTERN
-
-      engine.close()
     }
 
   /**
@@ -75,37 +73,38 @@ class StockfishEngineConcurrencyTest {
   @Test
   fun rapidMoveNavigationShouldNotCrash() =
     runTest(timeout = 120.seconds) {
-      val engine = getStockfish()
-      engine.setOption("Threads", "4")
+      getStockfish().use { engine ->
+        engine.setOption("Threads", "4")
 
-      withContext(Dispatchers.Default + SupervisorJob()) {
-        var searchJob: Job? = null
+        withContext(Dispatchers.Default + SupervisorJob()) {
+          var searchJob: Job? = null
 
-        for (fen in positions) {
+          for (fen in positions) {
+            searchJob?.let {
+              engine.stop()
+              it.join()
+            }
+
+            searchJob = launch {
+              engine.setPosition(fen = fen)
+              engine.search(depth = 20)
+            }
+
+            delay(100)
+          }
+
           searchJob?.let {
             engine.stop()
             it.join()
           }
-
-          searchJob = launch {
-            engine.setPosition(fen = fen)
-            engine.search(depth = 20)
-          }
-
-          delay(100)
         }
 
-        searchJob?.let {
-          engine.stop()
-          it.join()
-        }
+        engine.setOption("Threads", "1")
+        engine.setPosition()
+        val result = engine.search(depth = 5)
+        result.bestMove shouldMatch MOVE_PATTERN
+
+        engine.close()
       }
-
-      engine.setOption("Threads", "1")
-      engine.setPosition()
-      val result = engine.search(depth = 5)
-      result.bestMove shouldMatch MOVE_PATTERN
-
-      engine.close()
     }
 }

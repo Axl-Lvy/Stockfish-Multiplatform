@@ -58,9 +58,7 @@ kotlin {
     jvmMain.get().dependsOn(jvmCommon)
     androidMain.get().dependsOn(jvmCommon)
 
-    commonMain.dependencies {
-      implementation(libs.kotlinx.coroutines.core)
-    }
+    commonMain.dependencies { implementation(libs.kotlinx.coroutines.core) }
     commonTest.dependencies {
       implementation(libs.kotlin.test)
       implementation(libs.kotest.assertions.core)

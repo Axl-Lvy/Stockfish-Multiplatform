@@ -1,6 +1,7 @@
 #include <jni.h>
 #include <atomic>
 #include <condition_variable>
+#include <csignal>
 #include <mutex>
 #include <optional>
 #include <queue>
@@ -16,6 +17,24 @@
 #include "ucioption.h"
 
 using namespace Stockfish;
+
+// Stockfish's shared memory subsystem (shm_linux.h) registers signal handlers
+// that override the JVM's SIGSEGV handler. The JVM uses SIGSEGV internally
+// (e.g. for null-pointer checks in JIT code), so losing that handler causes
+// fatal crashes. This RAII guard saves and restores critical signal handlers
+// around any Stockfish call that might trigger the registration.
+struct JvmSignalGuard {
+    struct sigaction saved_sigsegv;
+    struct sigaction saved_sigbus;
+    JvmSignalGuard() {
+        sigaction(SIGSEGV, nullptr, &saved_sigsegv);
+        sigaction(SIGBUS, nullptr, &saved_sigbus);
+    }
+    ~JvmSignalGuard() {
+        sigaction(SIGSEGV, &saved_sigsegv, nullptr);
+        sigaction(SIGBUS, &saved_sigbus, nullptr);
+    }
+};
 
 static Stockfish::Engine*        g_engine   = nullptr;
 static std::queue<std::string>   g_queue;
@@ -141,6 +160,8 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_fr_axl_1lvy_stockfish_1multiplatform_JniStockfishEngine_startEngine(
         JNIEnv* env, jobject, jstring nnuePath) {
+    JvmSignalGuard signalGuard;
+
     std::call_once(g_initFlag, []() {
         Bitboards::init();
         Position::init();
@@ -167,6 +188,8 @@ Java_fr_axl_1lvy_stockfish_1multiplatform_JniStockfishEngine_startEngine(
 JNIEXPORT void JNICALL
 Java_fr_axl_1lvy_stockfish_1multiplatform_JniStockfishEngine_nativeSendCommand(
         JNIEnv* env, jobject, jstring cmd) {
+    JvmSignalGuard signalGuard;
+
     const char* str = env->GetStringUTFChars(cmd, nullptr);
     std::string command(str);
     env->ReleaseStringUTFChars(cmd, str);
@@ -198,14 +221,25 @@ Java_fr_axl_1lvy_stockfish_1multiplatform_JniStockfishEngine_nativeSendCommand(
 JNIEXPORT jstring JNICALL
 Java_fr_axl_1lvy_stockfish_1multiplatform_JniStockfishEngine_readOutput(
         JNIEnv* env, jobject) {
-    std::unique_lock<std::mutex> lock(g_mutex);
-    g_cv.wait(lock, [] { return !g_queue.empty() || g_shutdown; });
+    std::string line;
+    {
+        std::unique_lock<std::mutex> lock(g_mutex);
+        g_cv.wait(lock, [] { return !g_queue.empty() || g_shutdown; });
 
-    if (g_queue.empty())
-        return env->NewStringUTF("");
+        if (g_queue.empty()) {
+            return env->NewStringUTF("");
+        }
 
-    std::string line = std::move(g_queue.front());
-    g_queue.pop();
+        line = std::move(g_queue.front());
+        g_queue.pop();
+    }
+
+    // After reading a bestmove, wait for the search threads to fully quiesce
+    // before returning to Kotlin.
+    if (line.rfind("bestmove", 0) == 0 && g_engine != nullptr) {
+        g_engine->wait_for_search_finished();
+    }
+
     return env->NewStringUTF(line.c_str());
 }
 
