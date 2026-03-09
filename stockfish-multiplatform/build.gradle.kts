@@ -260,6 +260,11 @@ tasks.register("extractStockfishWasm") {
   description = "Extract Stockfish.js lite multithreaded files"
   group = "Resources"
   dependsOn("downloadStockfishWasmPackage", "createResourceDirectories")
+  inputs.file(layout.buildDirectory.file("stockfish-js-package.tgz"))
+  outputs.files(
+    layout.projectDirectory.file("src/wasmJsMain/resources/stockfish/stockfish-18.js"),
+    layout.projectDirectory.file("src/wasmJsMain/resources/stockfish/stockfish-18.wasm"),
+  )
   doLast {
     copy {
       from(tarTree(resources.gzip(layout.buildDirectory.file("stockfish-js-package.tgz"))))
