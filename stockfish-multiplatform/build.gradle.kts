@@ -16,7 +16,7 @@ ktfmt { googleStyle() }
 
 group = "fr.axl-lvy"
 
-version = "0.1.0-alpha.3"
+version = "0.1.0-alpha.4"
 
 kotlin {
   jvm()
@@ -66,12 +66,6 @@ kotlin {
     }
 
     androidMain.dependencies { implementation(libs.android.startup) }
-  }
-}
-
-android {
-  sourceSets.getByName("main") {
-    assets.srcDirs("src/androidMain/assets")
   }
 }
 
@@ -377,8 +371,7 @@ tasks.named("wasmJsProcessResources") { dependsOn("extractStockfishWasm") }
 
 afterEvaluate {
   tasks
-    .withType<com.android.build.gradle.tasks.MergeSourceSetFolders>()
-    .matching { it.name.contains("Assets") }
+    .matching { it.name.contains("merge") && it.name.contains("JavaRes") }
     .configureEach { dependsOn("copyNnueToAndroid") }
   tasks
     .matching { it.name.contains("merge") && it.name.contains("JniLibFolders") }
@@ -392,22 +385,22 @@ tasks.named("clean") {
     delete(layout.projectDirectory.dir("cpp/stockfish"))
     delete(layout.projectDirectory.dir("src/androidHostTest/jniLibs"))
     delete(layout.projectDirectory.dir("src/androidMain/jniLibs"))
-    delete(layout.projectDirectory.dir("src/androidMain/assets/stockfish"))
+    delete(layout.projectDirectory.dir("src/androidMain/resources/stockfish"))
     delete(layout.projectDirectory.dir("src/androidHostTest/resources/stockfish"))
     logger.lifecycle("Cleaned Stockfish resources and source directories")
   }
 }
 
-// Copy NNUE files to Android assets and host test resources
+// Copy NNUE files to Android resources and host test resources
 tasks.register("copyNnueToAndroid") {
-  description = "Copy NNUE network files to Android assets and host test resources"
+  description = "Copy NNUE network files to Android resources and host test resources"
   group = "Resources"
   dependsOn("downloadNnueNetworks")
   doLast {
     val nnueFiles = listOf("nn-c288c895ea92.nnue", "nn-37f18f62d772.nnue")
     val dirs =
       listOf(
-        layout.projectDirectory.dir("src/androidMain/assets/stockfish").asFile,
+        layout.projectDirectory.dir("src/androidMain/resources/stockfish").asFile,
         layout.projectDirectory.dir("src/androidHostTest/resources/stockfish").asFile,
       )
     for (dir in dirs) {
