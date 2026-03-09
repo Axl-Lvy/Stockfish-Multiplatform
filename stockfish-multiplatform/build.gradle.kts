@@ -69,6 +69,12 @@ kotlin {
   }
 }
 
+android {
+  sourceSets.getByName("main") {
+    assets.srcDirs("src/androidMain/assets")
+  }
+}
+
 dependencies {
   "androidDeviceTestImplementation"(libs.runner)
   "androidDeviceTestImplementation"(libs.core)
@@ -373,16 +379,7 @@ afterEvaluate {
   tasks
     .withType<com.android.build.gradle.tasks.MergeSourceSetFolders>()
     .matching { it.name.contains("Assets") }
-    .configureEach {
-      dependsOn("copyNnueToAndroid")
-      sourceFolderInputs.from(layout.projectDirectory.dir("src/androidMain/assets"))
-      doLast {
-        copy {
-          from(layout.projectDirectory.dir("src/androidMain/assets"))
-          into(outputDir)
-        }
-      }
-    }
+    .configureEach { dependsOn("copyNnueToAndroid") }
   tasks
     .matching { it.name.contains("merge") && it.name.contains("JniLibFolders") }
     .configureEach { dependsOn("compileAndroidNative") }
