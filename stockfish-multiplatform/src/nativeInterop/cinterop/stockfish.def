@@ -1,0 +1,4 @@
+headers = ios_bridge.h
+headerFilter = ios_bridge.h
+staticLibraries = libstockfish_ios.a
+linkerOpts = -lc++
