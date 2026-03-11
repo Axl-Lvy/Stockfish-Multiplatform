@@ -29,6 +29,16 @@ jobs:
           distribution: 'temurin'
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d # v4
+      - name: Cache native build artifacts
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            stockfish-multiplatform/cpp/stockfish
+            stockfish-multiplatform/build/stockfish-src.tar.gz
+            stockfish-multiplatform/src/jvmMain/resources/stockfish
+          key: jvm-native-${{ runner.os }}-stockfish-multiplatform-${{ hashFiles('**/src/**/cpp/CMakeLists.txt', 'stockfish-multiplatform/cpp/bridge.cpp', 'stockfish-multiplatform/build.gradle.kts') }}
+          restore-keys: |
+            jvm-native-${{ runner.os }}-stockfish-multiplatform-
       - name: Run JVM integration tests
         run: ./gradlew :integration-tests:jvmTest --stacktrace
       - name: Print test report on failure
@@ -50,17 +60,50 @@ jobs:
           distribution: 'temurin'
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d # v4
+      - name: Cache native build artifacts
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            stockfish-multiplatform/cpp/stockfish
+            stockfish-multiplatform/build/stockfish-src.tar.gz
+            stockfish-multiplatform/src/jvmMain/resources/stockfish
+            stockfish-multiplatform/src/androidMain/jniLibs
+            stockfish-multiplatform/src/androidMain/resources/stockfish
+            stockfish-multiplatform/src/androidHostTest/resources/stockfish
+          key: android-native-${{ runner.os }}-stockfish-multiplatform-${{ hashFiles('**/src/**/cpp/CMakeLists.txt', 'stockfish-multiplatform/cpp/bridge.cpp', 'stockfish-multiplatform/build.gradle.kts') }}
+          restore-keys: |
+            android-native-${{ runner.os }}-stockfish-multiplatform-
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      - name: AVD cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-api-30-x86_64-google_apis
+      - name: Create AVD snapshot for caching
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@f085ef0a201e8d974d0356a2d9de5447d10af42d # v2
+        with:
+          api-level: 30
+          arch: x86_64
+          target: google_apis
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: echo "Generated AVD snapshot for caching."
       - name: Run Android integration tests
         uses: reactivecircus/android-emulator-runner@f085ef0a201e8d974d0356a2d9de5447d10af42d # v2
         with:
           api-level: 30
           arch: x86_64
           target: google_apis
+          force-avd-creation: false
           disable-animations: true
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: ./gradlew :integration-tests:connectedAndroidTest
@@ -76,5 +119,14 @@ jobs:
           distribution: 'temurin'
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d # v4
+      - name: Cache WASM artifacts
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            stockfish-multiplatform/src/wasmJsMain/resources/stockfish
+            stockfish-multiplatform/build/stockfish-js-package.tgz
+          key: wasm-stockfish-multiplatform-${{ hashFiles('stockfish-multiplatform/build.gradle.kts') }}
+          restore-keys: |
+            wasm-stockfish-multiplatform-
       - name: Run WASM integration tests
         run: ./gradlew :integration-tests:wasmJsBrowserTest
