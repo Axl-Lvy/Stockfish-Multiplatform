@@ -83,6 +83,11 @@ kotlin {
     jvmMain.get().dependsOn(jvmCommon)
     androidMain.get().dependsOn(jvmCommon)
 
+    val iosMain = maybeCreate("iosMain").apply { dependsOn(commonMain.get()) }
+    getByName("iosArm64Main").dependsOn(iosMain)
+    getByName("iosSimulatorArm64Main").dependsOn(iosMain)
+    getByName("iosX64Main").dependsOn(iosMain)
+
     commonMain.dependencies { implementation(libs.kotlinx.coroutines.core) }
     commonTest.dependencies {
       implementation(libs.kotlin.test)

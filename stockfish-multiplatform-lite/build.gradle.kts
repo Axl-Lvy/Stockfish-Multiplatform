@@ -120,7 +120,14 @@ kotlin {
       kotlin.srcDir(layout.buildDirectory.dir("generated/wasmCdn"))
     }
 
-    iosMain { kotlin.srcDir("$fullModuleDir/src/iosMain/kotlin") }
+    val iosMain =
+      maybeCreate("iosMain").apply {
+        dependsOn(commonMain.get())
+        kotlin.srcDir("$fullModuleDir/src/iosMain/kotlin")
+      }
+    getByName("iosArm64Main").dependsOn(iosMain)
+    getByName("iosSimulatorArm64Main").dependsOn(iosMain)
+    getByName("iosX64Main").dependsOn(iosMain)
   }
 }
 
@@ -244,7 +251,7 @@ tasks.register("patchStockfishForLite") {
       |#define LITE_NETS_H
       |
       |// Lite build: big network is disabled, only the small network is used.
-      |#define EvalFileDefaultNameBig ""
+      |#define EvalFileDefaultNameBig "$nnueSmallName"
       |#define EvalFileDefaultNameSmall "$nnueSmallName"
       |
       |#endif // LITE_NETS_H
