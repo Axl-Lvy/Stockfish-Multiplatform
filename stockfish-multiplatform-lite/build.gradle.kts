@@ -169,7 +169,7 @@ tasks.register("generateNnueConfig") {
 }
 
 tasks.configureEach {
-  if (name.contains("compileKotlin")) {
+  if (name.contains("compileKotlin") || name.startsWith("compileAndroid")) {
     dependsOn("generateNnueConfig")
   }
 }
