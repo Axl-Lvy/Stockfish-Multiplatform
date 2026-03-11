@@ -560,9 +560,7 @@ tasks.withType<Test> {
 tasks.named("wasmJsProcessResources") { dependsOn("extractStockfishWasm") }
 
 afterEvaluate {
-  tasks.matching { it.name.contains("JavaRes") }.configureEach {
-    dependsOn("copyNnueToAndroid")
-  }
+  tasks.matching { it.name.contains("JavaRes") }.configureEach { dependsOn("copyNnueToAndroid") }
   tasks
     .matching { it.name.contains("merge") && it.name.contains("JniLibFolders") }
     .configureEach { dependsOn("compileAndroidNative") }
