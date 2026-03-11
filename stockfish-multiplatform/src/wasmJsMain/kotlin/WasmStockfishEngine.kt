@@ -7,6 +7,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 import kotlin.js.ExperimentalWasmJsInterop
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 @JsFun(
   """async (cdnJsUrl, cdnWasmUrl) => {
@@ -51,21 +52,18 @@ internal class WasmRawEngine : RawEngine {
   private var pendingContinuation: Continuation<String>? = null
 
   suspend fun start() {
-    val w =
-      suspendCoroutine<JsAny> { cont ->
-        val promise =
-          createStockfishWorkerAsync(
-            STOCKFISH_JS_CDN_URL.toJsString(),
-            STOCKFISH_WASM_CDN_URL.toJsString(),
-          )
-        bridgePromise(
-          promise,
-          resolve = { value -> cont.resume(value) },
-          reject = { error ->
-            cont.resumeWithException(RuntimeException(error.toString()))
-          },
+    val w = suspendCancellableCoroutine { cont ->
+      val promise =
+        createStockfishWorkerAsync(
+          STOCKFISH_JS_CDN_URL.toJsString(),
+          STOCKFISH_WASM_CDN_URL.toJsString(),
         )
-      }
+      bridgePromise(
+        promise,
+        resolve = { value -> cont.resume(value) },
+        reject = { error -> cont.resumeWithException(RuntimeException(error.toString())) },
+      )
+    }
     onWorkerMessage(w) { data: JsString ->
       val line = data.toString()
       if (line.isNotEmpty()) {
