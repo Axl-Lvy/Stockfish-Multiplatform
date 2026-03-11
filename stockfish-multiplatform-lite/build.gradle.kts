@@ -180,7 +180,7 @@ tasks.configureEach {
 tasks.register("patchStockfishForLite") {
   description = "Patch Stockfish evaluate.h for __LITE_NET__ support and create lite_nets.h"
   group = "Resources"
-  dependsOn(":stockfish-multiplatform:downloadStockfishSource")
+  dependsOn(":stockfish-multiplatform:patchStockfishSource")
   val sfDir = file("$fullModuleDir/cpp/stockfish")
   inputs.dir(sfDir).optional()
   doLast {
@@ -401,7 +401,7 @@ tasks.register("compileJvmNative") {
 tasks.register("compileAndroidNative") {
   description = "Compile native library for Android (lite) using NDK"
   group = "Resources"
-  dependsOn(":stockfish-multiplatform:downloadStockfishSource", "patchStockfishForLite")
+  dependsOn(":stockfish-multiplatform:patchStockfishSource", "patchStockfishForLite")
   inputs.dir(layout.projectDirectory.dir("src/androidMain/cpp"))
   inputs.dir(file("$fullModuleDir/cpp/stockfish")).optional()
   outputs.dir(layout.projectDirectory.dir("src/androidMain/jniLibs"))
