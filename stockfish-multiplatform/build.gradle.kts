@@ -28,9 +28,26 @@ kotlin {
     withHostTestBuilder {}
     withDeviceTestBuilder { sourceSetTreeName = "test" }
   }
-  iosX64()
-  iosArm64()
-  iosSimulatorArm64()
+  val iosArchMap =
+    mapOf(
+      "iosArm64" to "arm64-device",
+      "iosSimulatorArm64" to "arm64-simulator",
+      "iosX64" to "x86_64-simulator",
+    )
+
+  val iosTargets = listOf(iosX64(), iosArm64(), iosSimulatorArm64())
+
+  iosTargets.forEach { target ->
+    target.compilations.getByName("main") {
+      cinterops.create("stockfish") {
+        defFile(project.file("src/nativeInterop/cinterop/stockfish.def"))
+        compilerOpts("-I${project.file("cpp").absolutePath}")
+        extraOpts(
+          "-DlibraryPaths=${layout.buildDirectory.dir("ios-native/${iosArchMap[target.name]}").get().asFile.absolutePath}"
+        )
+      }
+    }
+  }
 
   // WebAssembly configuration
   @OptIn(ExperimentalWasmDsl::class)
@@ -291,36 +308,50 @@ tasks.register("compileJvmNative") {
   }
 }
 
-// iOS
-tasks.register<Download>("downloadStockfishIOS") {
-  description = "Download Stockfish binary for IOS"
+// iOS — Compile Stockfish as a static library for each iOS architecture using CMake.
+// NNUE networks are embedded into the binary (no NNUE_EMBEDDING_OFF).
+tasks.register("compileIosNative") {
+  description = "Compile Stockfish static library for iOS using CMake"
   group = "Resources"
-  dependsOn("createResourceDirectories")
-  src("$stockfishBaseUrl/stockfish-macos-m1-apple-silicon.tar")
-  dest(
-    layout.projectDirectory.file(
-      "src/iosMain/resources/stockfish/stockfish-macos-m1-apple-silicon.tar"
-    )
-  )
-  onlyIfModified(true)
+  dependsOn("downloadStockfishSource", "downloadNnueNetworks")
+  inputs.dir(layout.projectDirectory.dir("src/iosMain/cpp"))
+  inputs.dir(layout.projectDirectory.dir("cpp/stockfish")).optional()
+  outputs.dir(layout.buildDirectory.dir("ios-native"))
+  onlyIf { System.getProperty("os.name").lowercase().contains("mac") }
   doLast {
-    copy {
-      from(
-        tarTree(
-          layout.projectDirectory.file(
-            "src/iosMain/resources/stockfish/stockfish-macos-m1-apple-silicon.tar"
-          )
+    val cmakeSrcDir = layout.projectDirectory.dir("src/iosMain/cpp").asFile.absolutePath
+    val nnueDir = layout.projectDirectory.dir("src/jvmMain/resources/stockfish").asFile.absolutePath
+
+    data class IosTarget(val archDir: String, val arch: String, val sysroot: String?)
+
+    val targets =
+      listOf(
+        IosTarget("arm64-device", "arm64", null),
+        IosTarget("arm64-simulator", "arm64", "iphonesimulator"),
+        IosTarget("x86_64-simulator", "x86_64", "iphonesimulator"),
+      )
+
+    for (target in targets) {
+      val buildDir = layout.buildDirectory.dir("ios-native/${target.archDir}").get().asFile
+      buildDir.mkdirs()
+      val cmakeArgs =
+        mutableListOf(
+          "cmake",
+          cmakeSrcDir,
+          "-B",
+          buildDir.absolutePath,
+          "-DCMAKE_SYSTEM_NAME=iOS",
+          "-DCMAKE_OSX_ARCHITECTURES=${target.arch}",
+          "-DCMAKE_OSX_DEPLOYMENT_TARGET=14.0",
+          "-DCMAKE_BUILD_TYPE=Release",
+          "-DNNUE_DIR=$nnueDir",
         )
-      )
-      into(layout.projectDirectory.dir("src/iosMain/resources/stockfish"))
-      include("stockfish/stockfish-macos-m1-apple-silicon")
-      rename("stockfish/stockfish-macos-m1-apple-silicon", "stockfish")
+      if (target.sysroot != null) {
+        cmakeArgs.add("-DCMAKE_OSX_SYSROOT=${target.sysroot}")
+      }
+      exec { commandLine(cmakeArgs) }
+      exec { commandLine("cmake", "--build", buildDir.absolutePath, "--config", "Release") }
     }
-    delete(
-      layout.projectDirectory.file(
-        "src/iosMain/resources/stockfish/stockfish-macos-m1-apple-silicon.tar"
-      )
-    )
   }
 }
 
@@ -361,7 +392,7 @@ tasks.register("DownloadCompile") {
     "downloadStockfishSource",
     "compileJvmNative",
     "compileAndroidNative",
-    "downloadStockfishIOS",
+    "compileIosNative",
     "extractStockfishWasm",
   )
 }
@@ -376,6 +407,10 @@ afterEvaluate {
   tasks
     .matching { it.name.contains("merge") && it.name.contains("JniLibFolders") }
     .configureEach { dependsOn("compileAndroidNative") }
+  // Ensure iOS static libraries are built before cinterop runs
+  tasks
+    .matching { it.name.startsWith("cinteropStockfish") }
+    .configureEach { dependsOn("compileIosNative") }
 }
 
 tasks.named("clean") {
