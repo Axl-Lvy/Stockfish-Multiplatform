@@ -58,19 +58,7 @@ tasks.named("clean") {
 }
 
 afterEvaluate {
-  val libProject = project(":stockfish-multiplatform")
   tasks
-    .withType<com.android.build.gradle.tasks.MergeSourceSetFolders>()
-    .matching { it.name.contains("Assets") }
-    .configureEach {
-      dependsOn(":stockfish-multiplatform:copyNnueToAndroid")
-      val assetsDir = libProject.layout.projectDirectory.dir("src/androidMain/assets")
-      sourceFolderInputs.from(assetsDir)
-      doLast {
-        copy {
-          from(assetsDir)
-          into(outputDir)
-        }
-      }
-    }
+    .matching { it.name.contains("merge") && it.name.contains("JavaRes") }
+    .configureEach { dependsOn(":stockfish-multiplatform:copyNnueToAndroid") }
 }
