@@ -95,9 +95,7 @@ kotlin {
 
     iosX64Main { kotlin.srcDir("$fullModuleDir/src/iosX64Main/kotlin") }
     iosArm64Main { kotlin.srcDir("$fullModuleDir/src/iosArm64Main/kotlin") }
-    iosSimulatorArm64Main {
-      kotlin.srcDir("$fullModuleDir/src/iosSimulatorArm64Main/kotlin")
-    }
+    iosSimulatorArm64Main { kotlin.srcDir("$fullModuleDir/src/iosSimulatorArm64Main/kotlin") }
   }
 }
 
@@ -156,15 +154,17 @@ tasks.register("generateNnueConfig") {
   doLast {
     val dir = outputDir.get().asFile
     dir.mkdirs()
-    dir.resolve("NnueConfig.kt").writeText(
-      """
+    dir
+      .resolve("NnueConfig.kt")
+      .writeText(
+        """
       |package fr.axl_lvy.stockfish_multiplatform
       |
       |internal val NNUE_FILES = listOf("$nnueSmallName")
       """
-        .trimMargin()
-        .trim() + "\n"
-    )
+          .trimMargin()
+          .trim() + "\n"
+      )
   }
 }
 

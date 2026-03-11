@@ -404,15 +404,17 @@ tasks.register("generateNnueConfig") {
   doLast {
     val dir = outputDir.get().asFile
     dir.mkdirs()
-    dir.resolve("NnueConfig.kt").writeText(
-      """
-      |package fr.axl_lvy.stockfish_multiplatform
-      |
-      |internal val NNUE_FILES = listOf("nn-c288c895ea92.nnue", "nn-37f18f62d772.nnue")
-      """
-        .trimMargin()
-        .trim() + "\n"
-    )
+    dir
+      .resolve("NnueConfig.kt")
+      .writeText(
+        """
+        |package fr.axl_lvy.stockfish_multiplatform
+        |
+        |internal val NNUE_FILES = listOf("nn-c288c895ea92.nnue", "nn-37f18f62d772.nnue")
+        """
+          .trimMargin()
+          .trim() + "\n"
+      )
   }
 }
 
