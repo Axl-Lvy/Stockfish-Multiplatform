@@ -11,22 +11,35 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 
 @JsFun(
   """async (cdnJsUrl, cdnWasmUrl) => {
+  async function tryHead(url) {
+    try { var r = await fetch(url, { method: 'HEAD' }); return r.ok; } catch(e) { return false; }
+  }
   try {
     var m = import.meta.url;
     if (m && m.startsWith('http')) {
       var base = m.substring(0, m.lastIndexOf('/') + 1);
       var localJs = base + 'stockfish/stockfish-18.js';
       var localWasm = base + 'stockfish/stockfish-18.wasm';
-      var resp = await fetch(localJs, { method: 'HEAD' });
-      if (resp.ok) {
+      if (await tryHead(localJs)) {
         return new Worker(localJs + '#' + localWasm);
       }
     }
   } catch(e) {}
+  try {
+    var origin = self.location.origin;
+    var rootJs = origin + '/stockfish/stockfish-18.js';
+    var rootWasm = origin + '/stockfish/stockfish-18.wasm';
+    if (await tryHead(rootJs)) {
+      return new Worker(rootJs + '#' + rootWasm);
+    }
+  } catch(e) {}
   var jsResp = await fetch(cdnJsUrl);
-  if (!jsResp.ok) throw new Error('Failed to load Stockfish: ' + jsResp.status);
-  var jsBlob = await jsResp.blob();
-  return new Worker(URL.createObjectURL(jsBlob) + '#' + cdnWasmUrl);
+  if (!jsResp.ok) throw new Error('Failed to load Stockfish JS: ' + jsResp.status);
+  var wasmResp = await fetch(cdnWasmUrl);
+  if (!wasmResp.ok) throw new Error('Failed to load Stockfish WASM: ' + wasmResp.status);
+  var jsBlobUrl = URL.createObjectURL(await jsResp.blob());
+  var wasmBlobUrl = URL.createObjectURL(await wasmResp.blob());
+  return new Worker(jsBlobUrl + '#' + wasmBlobUrl);
 }"""
 )
 private external fun createStockfishWorkerAsync(cdnJsUrl: JsString, cdnWasmUrl: JsString): JsAny
@@ -39,7 +52,10 @@ private external fun bridgePromise(
 )
 
 @JsFun(
-  "(worker, callback) => { worker.onmessage = (e) => { var d = e.data; if (typeof d === 'string') callback(d); }; }"
+  """(worker, callback) => {
+  worker.onmessage = (e) => { var d = e.data; if (typeof d === 'string') callback(d); };
+  worker.onerror = (e) => { e.preventDefault(); console.error('Stockfish Worker error:', e.message || e); };
+}"""
 )
 private external fun onWorkerMessage(worker: JsAny, callback: (JsString) -> Unit)
 
