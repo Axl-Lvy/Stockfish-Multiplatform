@@ -509,6 +509,8 @@ tasks.register("compileAndroidNative") {
           cmakeSrcDir,
           "-B",
           buildDir.absolutePath,
+          "-G",
+          "Ninja",
           "-DCMAKE_TOOLCHAIN_FILE=$ndkHome/build/cmake/android.toolchain.cmake",
           "-DANDROID_ABI=$abi",
           "-DANDROID_PLATFORM=android-21",
