@@ -68,6 +68,7 @@ kotlin {
       implementation(libs.kotlinx.coroutines.test)
     }
 
+    wasmJsMain.get().kotlin.srcDir(layout.buildDirectory.dir("generated/wasmCdn"))
     androidMain.dependencies { implementation(libs.android.startup) }
   }
 }
@@ -416,13 +417,36 @@ tasks.register("generateNnueConfig") {
   }
 }
 
+tasks.register("generateWasmCdnConfig") {
+  description = "Generate WasmCdnConfig.kt with CDN URLs for Stockfish WASM files"
+  group = "Resources"
+  val outputDir = layout.buildDirectory.dir("generated/wasmCdn")
+  outputs.dir(outputDir)
+  doLast {
+    val dir = outputDir.get().asFile
+    dir.mkdirs()
+    dir
+      .resolve("WasmCdnConfig.kt")
+      .writeText(
+        """
+        |package fr.axl_lvy.stockfish_multiplatform
+        |
+        |internal const val STOCKFISH_JS_CDN_URL = "https://unpkg.com/stockfish@18.0.5/bin/stockfish-18.js"
+        |internal const val STOCKFISH_WASM_CDN_URL = "https://unpkg.com/stockfish@18.0.5/bin/stockfish-18.wasm"
+        """
+          .trimMargin()
+          .trim() + "\n"
+      )
+  }
+}
+
 tasks.configureEach {
   if (
     name.contains("compileKotlin") ||
       name.startsWith("compileAndroid") ||
       name.contains("SourcesJar")
   ) {
-    dependsOn("generateNnueConfig")
+    dependsOn("generateNnueConfig", "generateWasmCdnConfig")
   }
 }
 
