@@ -3,7 +3,7 @@ on:
   release:
     types: [released, prereleased]
 permissions:
-  contents: read
+  contents: write
   packages: write
 jobs:
   build-native:
@@ -89,3 +89,19 @@ jobs:
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Bump version
+        run: |
+          CURRENT=$(grep '^library\.version=' gradle.properties | cut -d= -f2)
+          # Increment last numeric segment: 0.1.0-alpha.4 -> 0.1.0-alpha.5, 0.1.0 -> 0.1.1
+          PREFIX="${CURRENT%[0-9]*}"
+          LAST="${CURRENT##*[!0-9]}"
+          NEXT="${PREFIX}$(( LAST + 1 ))"
+          echo "Bumping version: $CURRENT -> $NEXT"
+          sed -i "s/^library\.version=.*/library.version=$NEXT/" gradle.properties
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add gradle.properties
+          git commit -m "chore: bump version to $(grep '^library\.version=' gradle.properties | cut -d= -f2)"
+          git push origin HEAD:${{ github.event.repository.default_branch }}

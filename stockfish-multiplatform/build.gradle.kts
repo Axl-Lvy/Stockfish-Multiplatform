@@ -16,7 +16,7 @@ ktfmt { googleStyle() }
 
 group = "fr.axl-lvy"
 
-version = "0.1.0-alpha.4"
+version = findProperty("library.version") as String
 
 kotlin {
   jvm()
