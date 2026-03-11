@@ -43,7 +43,12 @@ kotlin {
         defFile(project.file("src/nativeInterop/cinterop/stockfish.def"))
         compilerOpts("-I${project.file("cpp").absolutePath}")
         extraOpts(
-          "-DlibraryPaths=${layout.buildDirectory.dir("ios-native/${iosArchMap[target.name]}").get().asFile.absolutePath}"
+          "-libraryPath",
+          layout.buildDirectory
+            .dir("ios-native/${iosArchMap[target.name]}")
+            .get()
+            .asFile
+            .absolutePath,
         )
       }
     }

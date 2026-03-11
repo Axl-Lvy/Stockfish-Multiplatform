@@ -52,7 +52,12 @@ kotlin {
         )
         compilerOpts("-I${file("$fullModuleDir/cpp").absolutePath}")
         extraOpts(
-          "-DlibraryPaths=${layout.buildDirectory.dir("ios-native/${iosArchMap[target.name]}").get().asFile.absolutePath}"
+          "-libraryPath",
+          layout.buildDirectory
+            .dir("ios-native/${iosArchMap[target.name]}")
+            .get()
+            .asFile
+            .absolutePath,
         )
       }
     }
@@ -541,6 +546,7 @@ tasks.register("compileIosNative") {
           "-DCMAKE_OSX_DEPLOYMENT_TARGET=14.0",
           "-DCMAKE_BUILD_TYPE=Release",
           "-DNNUE_DIR=$nnueDir",
+          "-DLITE_NET=ON",
         )
       if (target.sysroot != null) {
         cmakeArgs.add("-DCMAKE_OSX_SYSROOT=${target.sysroot}")

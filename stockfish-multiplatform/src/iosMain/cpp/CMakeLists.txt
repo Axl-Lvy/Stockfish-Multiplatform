@@ -35,6 +35,11 @@ target_include_directories(stockfish_ios PRIVATE
     "${NATIVE_ROOT}/stockfish"
 )
 
+# Lite build: only use the small NNUE network
+if(LITE_NET)
+    target_compile_definitions(stockfish_ios PRIVATE __LITE_NET__)
+endif()
+
 # NNUE embedding: if NNUE_DIR is provided, add it to include path so incbin can find the .nnue files.
 # If not provided, NNUE_EMBEDDING_OFF is defined to skip embedding.
 if(NNUE_DIR AND EXISTS "${NNUE_DIR}")
