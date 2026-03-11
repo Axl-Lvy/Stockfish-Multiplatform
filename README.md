@@ -31,6 +31,30 @@ Both modules expose the same API — the only difference is the bundled NNUE net
 
 The full variant re-evaluates positions with the large network when the small network's evaluation is uncertain, giving it a slight accuracy edge. The lite variant skips this and always uses the small network, resulting in a much smaller artifact.
 
+## WebAssembly setup
+
+Stockfish uses multi-threaded WebAssembly, which requires the browser to have `SharedArrayBuffer` enabled. Browsers only expose `SharedArrayBuffer` when the page is served with specific HTTP headers.
+
+**Kotlin/WASM with webpack** — create `webpack.config.d/headers.js` in your module directory:
+
+```javascript
+if (config.devServer) {
+  config.devServer.headers = Object.assign(config.devServer.headers || {}, {
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Cross-Origin-Embedder-Policy": "credentialless"
+  });
+}
+```
+
+**Production** — configure your web server to add the same headers to all responses:
+
+```
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Embedder-Policy: credentialless
+```
+
+> These headers are a browser requirement for any multi-threaded WebAssembly application, not specific to this library.
+
 ## Important notes
 
 - **Singleton**: The native Stockfish bridge uses global static state — only one engine instance can exist per process. `getStockfish()` enforces this by returning the same instance on subsequent calls, unless the previous one was closed.

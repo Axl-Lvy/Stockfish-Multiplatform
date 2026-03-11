@@ -13,12 +13,14 @@ import kotlinx.coroutines.suspendCancellableCoroutine
   """async (cdnJsUrl, cdnWasmUrl) => {
   try {
     var m = import.meta.url;
-    var base = m.substring(0, m.lastIndexOf('/') + 1);
-    var localJs = base + 'stockfish/stockfish-18.js';
-    var localWasm = base + 'stockfish/stockfish-18.wasm';
-    var resp = await fetch(localJs, { method: 'HEAD' });
-    if (resp.ok) {
-      return new Worker(localJs + '#' + localWasm);
+    if (m && m.startsWith('http')) {
+      var base = m.substring(0, m.lastIndexOf('/') + 1);
+      var localJs = base + 'stockfish/stockfish-18.js';
+      var localWasm = base + 'stockfish/stockfish-18.wasm';
+      var resp = await fetch(localJs, { method: 'HEAD' });
+      if (resp.ok) {
+        return new Worker(localJs + '#' + localWasm);
+      }
     }
   } catch(e) {}
   var jsResp = await fetch(cdnJsUrl);
