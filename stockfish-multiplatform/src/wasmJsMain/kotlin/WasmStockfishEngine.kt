@@ -9,8 +9,8 @@ import kotlin.js.ExperimentalWasmJsInterop
 
 @JsFun(
   """() => {
-  var jsUrl = new URL('../../../node_modules/stockfish-multiplatform-wasm-js/stockfish/stockfish-18.js', import.meta.url);
-  var wasmUrl = new URL('../../../node_modules/stockfish-multiplatform-wasm-js/stockfish/stockfish-18.wasm', import.meta.url);
+  var jsUrl = new URL('./stockfish/stockfish-18.js', import.meta.url);
+  var wasmUrl = new URL('./stockfish/stockfish-18.wasm', import.meta.url);
   return new Worker(jsUrl.href + '#' + wasmUrl.href);
 }"""
 )
