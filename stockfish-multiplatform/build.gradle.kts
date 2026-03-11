@@ -324,7 +324,8 @@ tasks.register<Download>("downloadStockfishIOS") {
   }
 }
 
-// WASM - Download Stockfish.js lite multithreaded from npm package
+// WASM - Download Stockfish .wasm binary from npm package
+// The .js file is committed to the repo (patched for blob Worker URL handling).
 tasks.register<Download>("downloadStockfishWasmPackage") {
   description = "Download Stockfish.js npm package"
   group = "Resources"
@@ -334,21 +335,17 @@ tasks.register<Download>("downloadStockfishWasmPackage") {
 }
 
 tasks.register("extractStockfishWasm") {
-  description = "Extract Stockfish.js lite multithreaded files"
+  description = "Extract Stockfish .wasm binary from npm package"
   group = "Resources"
   dependsOn("downloadStockfishWasmPackage", "createResourceDirectories")
   inputs.file(layout.buildDirectory.file("stockfish-js-package.tgz"))
-  outputs.files(
-    layout.projectDirectory.file("src/wasmJsMain/resources/stockfish/stockfish-18.js"),
-    layout.projectDirectory.file("src/wasmJsMain/resources/stockfish/stockfish-18.wasm"),
-  )
+  outputs.file(layout.projectDirectory.file("src/wasmJsMain/resources/stockfish/stockfish-18.wasm"))
   doLast {
     copy {
       from(tarTree(resources.gzip(layout.buildDirectory.file("stockfish-js-package.tgz"))))
       into(layout.buildDirectory.dir("stockfish-js-extracted"))
     }
     copy {
-      from(layout.buildDirectory.file("stockfish-js-extracted/package/bin/stockfish-18.js"))
       from(layout.buildDirectory.file("stockfish-js-extracted/package/bin/stockfish-18.wasm"))
       into(layout.projectDirectory.dir("src/wasmJsMain/resources/stockfish"))
     }
@@ -372,6 +369,7 @@ tasks.register("DownloadCompile") {
 tasks.named("jvmProcessResources") { dependsOn("downloadNnueNetworks", "compileJvmNative") }
 
 tasks.named("wasmJsProcessResources") { dependsOn("extractStockfishWasm") }
+
 
 afterEvaluate {
   tasks.matching { it.name.contains("JavaRes") }.configureEach { dependsOn("copyNnueToAndroid") }

@@ -11,35 +11,24 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 
 @JsFun(
   """async (cdnJsUrl, cdnWasmUrl) => {
-  async function tryHead(url) {
-    try { var r = await fetch(url, { method: 'HEAD' }); return r.ok; } catch(e) { return false; }
-  }
-  try {
-    var m = import.meta.url;
-    if (m && m.startsWith('http')) {
-      var base = m.substring(0, m.lastIndexOf('/') + 1);
-      var localJs = base + 'stockfish/stockfish-18.js';
-      var localWasm = base + 'stockfish/stockfish-18.wasm';
-      if (await tryHead(localJs)) {
-        return new Worker(localJs + '#' + localWasm);
-      }
-    }
-  } catch(e) {}
-  try {
-    var origin = self.location.origin;
-    var rootJs = origin + '/stockfish/stockfish-18.js';
-    var rootWasm = origin + '/stockfish/stockfish-18.wasm';
-    if (await tryHead(rootJs)) {
-      return new Worker(rootJs + '#' + rootWasm);
-    }
-  } catch(e) {}
   var jsResp = await fetch(cdnJsUrl);
   if (!jsResp.ok) throw new Error('Failed to load Stockfish JS: ' + jsResp.status);
   var wasmResp = await fetch(cdnWasmUrl);
   if (!wasmResp.ok) throw new Error('Failed to load Stockfish WASM: ' + wasmResp.status);
-  var jsBlobUrl = URL.createObjectURL(await jsResp.blob());
+  var jsText = await jsResp.text();
+  // Patch 1: parse wasmUrl|jsUrl from hash so pthread workers get the JS blob URL
+  jsText = jsText.replace(
+    'e=self.location.hash.substr(1).split(","),s=decodeURIComponent(e[0]||location.origin+location.pathname.replace(/\\.js$/i,".wasm"))',
+    'e=self.location.hash.substr(1).split(","),function(){var p=(e[0]||"").split("|");s=decodeURIComponent(p[0]||location.origin+location.pathname.replace(/\\.js$/i,".wasm"));gt=p[1]?decodeURIComponent(p[1]):null}()'
+  );
+  // Patch 2: use gt (JS blob URL) for pthread worker URL instead of self.location
+  jsText = jsText.replace(
+    'self.location.origin+self.location.pathname+"#"+s+",worker"',
+    'gt+"#"+s+",worker"'
+  );
   var wasmBlobUrl = URL.createObjectURL(await wasmResp.blob());
-  return new Worker(jsBlobUrl + '#' + wasmBlobUrl);
+  var jsBlobUrl = URL.createObjectURL(new Blob([jsText], {type: 'application/javascript'}));
+  return new Worker(jsBlobUrl + '#' + wasmBlobUrl + '|' + jsBlobUrl);
 }"""
 )
 private external fun createStockfishWorkerAsync(cdnJsUrl: JsString, cdnWasmUrl: JsString): JsAny
