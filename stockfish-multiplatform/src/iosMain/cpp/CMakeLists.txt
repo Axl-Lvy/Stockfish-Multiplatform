@@ -21,6 +21,7 @@ if(CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
     target_compile_definitions(stockfish_ios PRIVATE USE_NEON=8)
 elseif(CMAKE_OSX_ARCHITECTURES STREQUAL "x86_64")
     target_compile_definitions(stockfish_ios PRIVATE USE_SSE2 USE_POPCNT USE_SSSE3 USE_SSE41)
+    target_compile_options(stockfish_ios PRIVATE -msse -msse2 -mssse3 -msse4.1 -mpopcnt)
 endif()
 
 target_compile_definitions(stockfish_ios PRIVATE
