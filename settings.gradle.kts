@@ -15,4 +15,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "stockfish-multiplatform"
 include(":stockfish-multiplatform")
+include(":stockfish-multiplatform-lite")
 include(":integration-tests")

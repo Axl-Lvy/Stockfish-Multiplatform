@@ -16,6 +16,11 @@ permissions:
 
 jobs:
   jvm-test:
+    name: JVM tests (${{ matrix.module }})
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [stockfish-multiplatform, stockfish-multiplatform-lite]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -27,9 +32,14 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d # v4
       - name: Run JVM tests
-        run: ./gradlew :stockfish-multiplatform:jvmTest
+        run: ./gradlew :${{ matrix.module }}:jvmTest
 
   android-test:
+    name: Android tests (${{ matrix.module }})
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [stockfish-multiplatform, stockfish-multiplatform-lite]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -53,9 +63,14 @@ jobs:
           target: google_apis
           disable-animations: true
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          script: ./gradlew :stockfish-multiplatform:connectedAndroidTest
+          script: ./gradlew :${{ matrix.module }}:connectedAndroidTest
 
   wasm-test:
+    name: WASM tests (${{ matrix.module }})
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [stockfish-multiplatform, stockfish-multiplatform-lite]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -67,4 +82,4 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d # v4
       - name: Run WASM tests
-        run: ./gradlew :stockfish-multiplatform:wasmJsTest
+        run: ./gradlew :${{ matrix.module }}:wasmJsTest
