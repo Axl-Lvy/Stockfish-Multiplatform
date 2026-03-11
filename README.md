@@ -5,7 +5,11 @@ A Kotlin Multiplatform library that brings the [Stockfish](https://stockfishches
 ## Quick start
 
 ```kotlin
+// Full — includes both large and small NNUE networks
 implementation("fr.axl_lvy:stockfish-multiplatform:<version>")
+
+// Lite — small NNUE network only, much smaller download size
+implementation("fr.axl_lvy:stockfish-multiplatform-lite:<version>")
 ```
 
 ```kotlin
@@ -14,6 +18,18 @@ engine.setPosition(fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -
 val result = engine.search(depth = 20)
 println(result.bestMove) // e.g. "e7e5"
 ```
+
+## Full vs Lite
+
+Both modules expose the same API — the only difference is the bundled NNUE network:
+
+| | Full | Lite |
+|---|---|---|
+| **NNUE networks** | Large + small | Small only |
+| **Strength** | Maximum | Slightly weaker |
+| **Binary size** | Larger | Smaller |
+
+The full variant re-evaluates positions with the large network when the small network's evaluation is uncertain, giving it a slight accuracy edge. The lite variant skips this and always uses the small network, resulting in a much smaller artifact.
 
 ## Important notes
 
