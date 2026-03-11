@@ -19,7 +19,7 @@ internal class JvmStockfishEngine : JniStockfishEngine() {
       lib.outputStream().use { output -> input.copyTo(output) }
     } ?: error("Native library not found: /stockfish/$libName")
 
-    for (nnue in listOf("nn-c288c895ea92.nnue", "nn-37f18f62d772.nnue")) {
+    for (nnue in NNUE_FILES) {
       val dest = File(tempDir, nnue)
       javaClass.getResourceAsStream("/stockfish/$nnue")?.use { input ->
         dest.outputStream().use { output -> input.copyTo(output) }

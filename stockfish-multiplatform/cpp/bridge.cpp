@@ -200,11 +200,14 @@ Java_fr_axl_1lvy_stockfish_1multiplatform_JniStockfishEngine_startEngine(
     // triggers a network reload from the correct directory.
     if (!nnueDir.empty()) {
         std::string bigPath   = nnueDir + "/" + EvalFileDefaultNameBig;
-        std::string smallPath = nnueDir + "/" + EvalFileDefaultNameSmall;
         std::istringstream isBig("name EvalFile value " + bigPath);
         g_engine->get_options().setoption(isBig);
-        std::istringstream isSmall("name EvalFileSmall value " + smallPath);
-        g_engine->get_options().setoption(isSmall);
+        // In lite builds EvalFileDefaultNameSmall is empty — skip it.
+        if (strlen(EvalFileDefaultNameSmall) > 0) {
+            std::string smallPath = nnueDir + "/" + EvalFileDefaultNameSmall;
+            std::istringstream isSmall("name EvalFileSmall value " + smallPath);
+            g_engine->get_options().setoption(isSmall);
+        }
     }
 #endif
 }

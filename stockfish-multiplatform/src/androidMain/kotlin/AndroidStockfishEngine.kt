@@ -2,8 +2,6 @@ package fr.axl_lvy.stockfish_multiplatform
 
 import java.io.File
 
-private val NNUE_FILES = listOf("nn-c288c895ea92.nnue", "nn-37f18f62d772.nnue")
-
 internal class AndroidStockfishEngine : JniStockfishEngine() {
   override fun loadNativeLibrary(): String {
     System.loadLibrary("stockfishjni")

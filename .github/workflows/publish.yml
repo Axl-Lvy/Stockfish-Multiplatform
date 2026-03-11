@@ -3,18 +3,39 @@ on:
   release:
     types: [released, prereleased]
 permissions:
-  contents: read
+  contents: write
   packages: write
 jobs:
   build-native:
-    name: Build JVM native (${{ matrix.os }})
+    name: Build JVM native – ${{ matrix.variant }} (${{ matrix.os }})
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             lib: libstockfishjni.so
+            module: stockfish-multiplatform
+            variant: full
           - os: macos-latest
             lib: libstockfishjni.dylib
+            module: stockfish-multiplatform
+            variant: full
+          - os: windows-latest
+            lib: stockfishjni.dll
+            module: stockfish-multiplatform
+            variant: full
+          - os: ubuntu-latest
+            lib: libstockfishjni.so
+            module: stockfish-multiplatform-lite
+            variant: lite
+          - os: macos-latest
+            lib: libstockfishjni.dylib
+            module: stockfish-multiplatform-lite
+            variant: lite
+          - os: windows-latest
+            lib: stockfishjni.dll
+            module: stockfish-multiplatform-lite
+            variant: lite
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out code
@@ -25,12 +46,12 @@ jobs:
           distribution: 'zulu'
           java-version: 21
       - name: Compile JVM native library
-        run: ./gradlew :stockfish-multiplatform:compileJvmNative --no-configuration-cache
+        run: ./gradlew :${{ matrix.module }}:compileJvmNative --no-configuration-cache
       - name: Upload native library
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: native-${{ matrix.os }}
-          path: stockfish-multiplatform/src/jvmMain/resources/stockfish/${{ matrix.lib }}
+          name: native-${{ matrix.variant }}-${{ matrix.os }}
+          path: ${{ matrix.module }}/src/jvmMain/resources/stockfish/${{ matrix.lib }}
           retention-days: 1
 
   publish:
@@ -45,16 +66,42 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: 21
-      - name: Download all native libraries
+      - name: Download full module native libraries
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: stockfish-multiplatform/src/jvmMain/resources/stockfish/
-          pattern: native-*
+          pattern: native-full-*
+          merge-multiple: true
+      - name: Download lite module native libraries
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          path: stockfish-multiplatform-lite/src/jvmMain/resources/stockfish/
+          pattern: native-lite-*
           merge-multiple: true
       - name: Verify native libraries
-        run: ls -la stockfish-multiplatform/src/jvmMain/resources/stockfish/
+        run: |
+          echo "=== Full module ==="
+          ls -la stockfish-multiplatform/src/jvmMain/resources/stockfish/
+          echo "=== Lite module ==="
+          ls -la stockfish-multiplatform-lite/src/jvmMain/resources/stockfish/
       - name: Publish to GitHub Packages
         run: ./gradlew publishAllPublicationsToGitHubPackagesRepository --no-configuration-cache
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Bump version
+        run: |
+          CURRENT=$(grep '^library\.version=' gradle.properties | cut -d= -f2)
+          # Increment last numeric segment: 0.1.0-alpha.4 -> 0.1.0-alpha.5, 0.1.0 -> 0.1.1
+          PREFIX="${CURRENT%[0-9]*}"
+          LAST="${CURRENT##*[!0-9]}"
+          NEXT="${PREFIX}$(( LAST + 1 ))"
+          echo "Bumping version: $CURRENT -> $NEXT"
+          sed -i "s/^library\.version=.*/library.version=$NEXT/" gradle.properties
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add gradle.properties
+          git commit -m "chore: bump version to $(grep '^library\.version=' gradle.properties | cut -d= -f2)"
+          git push origin HEAD:${{ github.event.repository.default_branch }}
