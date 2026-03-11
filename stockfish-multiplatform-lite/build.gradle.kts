@@ -47,7 +47,9 @@ kotlin {
   iosTargets.forEach { target ->
     target.compilations.getByName("main") {
       cinterops.create("stockfish") {
-        defFile(project(":stockfish-multiplatform").file("src/nativeInterop/cinterop/stockfish.def"))
+        defFile(
+          project(":stockfish-multiplatform").file("src/nativeInterop/cinterop/stockfish.def")
+        )
         compilerOpts("-I${file("$fullModuleDir/cpp").absolutePath}")
         extraOpts(
           "-DlibraryPaths=${layout.buildDirectory.dir("ios-native/${iosArchMap[target.name]}").get().asFile.absolutePath}"
@@ -503,7 +505,11 @@ tasks.register("compileAndroidNative") {
 tasks.register("compileIosNative") {
   description = "Compile Stockfish static library for iOS (lite) using CMake"
   group = "Resources"
-  dependsOn(":stockfish-multiplatform:downloadStockfishSource", "patchStockfishForLite", "downloadNnueNetworks")
+  dependsOn(
+    ":stockfish-multiplatform:downloadStockfishSource",
+    "patchStockfishForLite",
+    "downloadNnueNetworks",
+  )
   inputs.dir(file("$fullModuleDir/src/iosMain/cpp"))
   inputs.dir(file("$fullModuleDir/cpp/stockfish")).optional()
   outputs.dir(layout.buildDirectory.dir("ios-native"))
@@ -583,12 +589,7 @@ tasks.register("extractStockfishWasm") {
 tasks.register("DownloadCompile") {
   description = "Downloads and compiles everything for the lite variant"
   group = "Resources"
-  dependsOn(
-    "compileJvmNative",
-    "compileAndroidNative",
-    "compileIosNative",
-    "extractStockfishWasm",
-  )
+  dependsOn("compileJvmNative", "compileAndroidNative", "compileIosNative", "extractStockfishWasm")
 }
 
 tasks.named("jvmProcessResources") { dependsOn("downloadNnueNetworks", "compileJvmNative") }
@@ -605,8 +606,6 @@ tasks.withType<Test> {
   }
   jvmArgs("-Xss8m")
 }
-
-
 
 afterEvaluate {
   tasks.matching { it.name.contains("JavaRes") }.configureEach { dependsOn("copyNnueToAndroid") }

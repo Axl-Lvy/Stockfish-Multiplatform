@@ -401,7 +401,6 @@ tasks.named("jvmProcessResources") { dependsOn("downloadNnueNetworks", "compileJ
 
 tasks.named("wasmJsProcessResources") { dependsOn("extractStockfishWasm") }
 
-
 afterEvaluate {
   tasks.matching { it.name.contains("JavaRes") }.configureEach { dependsOn("copyNnueToAndroid") }
   tasks
