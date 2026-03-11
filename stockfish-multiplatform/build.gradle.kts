@@ -16,7 +16,7 @@ ktfmt { googleStyle() }
 
 group = "fr.axl-lvy"
 
-version = "0.1.0-alpha.4"
+version = findProperty("library.version") as String
 
 kotlin {
   jvm()
@@ -54,7 +54,10 @@ kotlin {
   }
 
   sourceSets {
-    val jvmCommon by creating { dependsOn(commonMain.get()) }
+    val jvmCommon by creating {
+      dependsOn(commonMain.get())
+      kotlin.srcDir(layout.buildDirectory.dir("generated/nnue"))
+    }
     jvmMain.get().dependsOn(jvmCommon)
     androidMain.get().dependsOn(jvmCommon)
 
@@ -370,9 +373,7 @@ tasks.named("jvmProcessResources") { dependsOn("downloadNnueNetworks", "compileJ
 tasks.named("wasmJsProcessResources") { dependsOn("extractStockfishWasm") }
 
 afterEvaluate {
-  tasks
-    .matching { it.name.contains("merge") && it.name.contains("JavaRes") }
-    .configureEach { dependsOn("copyNnueToAndroid") }
+  tasks.matching { it.name.contains("JavaRes") }.configureEach { dependsOn("copyNnueToAndroid") }
   tasks
     .matching { it.name.contains("merge") && it.name.contains("JniLibFolders") }
     .configureEach { dependsOn("compileAndroidNative") }
@@ -388,6 +389,36 @@ tasks.named("clean") {
     delete(layout.projectDirectory.dir("src/androidMain/resources/stockfish"))
     delete(layout.projectDirectory.dir("src/androidHostTest/resources/stockfish"))
     logger.lifecycle("Cleaned Stockfish resources and source directories")
+  }
+}
+
+// Generate NnueConfig.kt with the NNUE network filenames for this variant.
+// The lite module generates its own version with smaller network names.
+tasks.register("generateNnueConfig") {
+  description = "Generate NnueConfig.kt with NNUE filenames"
+  group = "Resources"
+  val outputDir = layout.buildDirectory.dir("generated/nnue")
+  outputs.dir(outputDir)
+  doLast {
+    val dir = outputDir.get().asFile
+    dir.mkdirs()
+    dir
+      .resolve("NnueConfig.kt")
+      .writeText(
+        """
+        |package fr.axl_lvy.stockfish_multiplatform
+        |
+        |internal val NNUE_FILES = listOf("nn-c288c895ea92.nnue", "nn-37f18f62d772.nnue")
+        """
+          .trimMargin()
+          .trim() + "\n"
+      )
+  }
+}
+
+tasks.configureEach {
+  if (name.contains("compileKotlin") || name.startsWith("compileAndroid")) {
+    dependsOn("generateNnueConfig")
   }
 }
 

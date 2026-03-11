@@ -6,7 +6,7 @@ import io.kotest.matchers.string.shouldMatch
 import kotlin.test.Test
 import kotlinx.coroutines.test.runTest
 
-private val MOVE_PATTERN = "[a-h][1-8][a-h][1-8].*"
+private const val MOVE_PATTERN = "[a-h][1-8][a-h][1-8].*"
 
 class BasicIntegrationTest {
 
