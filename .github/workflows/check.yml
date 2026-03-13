@@ -110,16 +110,7 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-metrics
           emulator-boot-timeout: 600
           script: |
-            # Wait for system services to be fully ready (not just boot_completed)
-            echo "Waiting for system services..."
-            for i in $(seq 1 30); do
-              if adb shell service list 2>/dev/null | grep -q "input"; then
-                echo "System services ready after ${i} attempts."
-                break
-              fi
-              echo "Attempt $i: services not ready, waiting 5s..."
-              sleep 5
-            done
+            for i in $(seq 1 30); do if adb shell service list 2>/dev/null | grep -q "input"; then echo "System services ready."; break; fi; echo "Waiting for services ($i)..."; sleep 5; done
             adb shell settings put global window_animation_scale 0.0
             adb shell settings put global transition_animation_scale 0.0
             adb shell settings put global animator_duration_scale 0.0
