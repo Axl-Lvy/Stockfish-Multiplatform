@@ -94,9 +94,8 @@ jobs:
           arch: x86_64
           target: google_apis
           force-avd-creation: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-metrics
-          emulator-boot-timeout: 600
-          disable-animations: true
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: echo "Generated AVD snapshot for caching."
       - name: Run Android integration tests
         uses: reactivecircus/android-emulator-runner@f085ef0a201e8d974d0356a2d9de5447d10af42d # v2
@@ -107,8 +106,7 @@ jobs:
           target: google_apis
           force-avd-creation: false
           disable-animations: false
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-metrics
-          emulator-boot-timeout: 600
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
             for i in $(seq 1 30); do if adb shell service list 2>/dev/null | grep -q "input"; then echo "System services ready."; break; fi; echo "Waiting for services ($i)..."; sleep 5; done
             adb shell settings put global window_animation_scale 0.0
