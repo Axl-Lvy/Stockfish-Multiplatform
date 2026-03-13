@@ -518,7 +518,7 @@ tasks.register("copyNnueToAndroid") {
 tasks.register("compileAndroidNative") {
   description = "Compile native library for Android using NDK CMake toolchain"
   group = "Resources"
-  dependsOn("downloadStockfishSource")
+  dependsOn("downloadStockfishSource", "patchStockfishSource")
   inputs.dir(layout.projectDirectory.dir("src/androidMain/cpp"))
   inputs.dir(layout.projectDirectory.dir("cpp/stockfish")).optional()
   outputs.dir(layout.projectDirectory.dir("src/androidMain/jniLibs"))

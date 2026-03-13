@@ -23,10 +23,12 @@ target_compile_definitions(stockfishjni PRIVATE
     NNUE_EMBEDDING_OFF
     NDEBUG
     USE_POPCNT
+    USE_SSE2
     __LITE_NET__
 )
 
 if(MSVC)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     target_compile_options(stockfishjni PRIVATE /O2 /EHsc)
 else()
     target_compile_options(stockfishjni PRIVATE -O3 -fexceptions)

@@ -22,9 +22,12 @@ target_compile_definitions(stockfishjni PRIVATE
     NNUE_EMBEDDING_OFF
     NDEBUG
     USE_POPCNT
+    USE_SSE2
 )
 
 if(MSVC)
+    # Static CRT linkage (/MT) so the DLL does not depend on msvcp140.dll at runtime.
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     target_compile_options(stockfishjni PRIVATE /O2 /EHsc)
 else()
     target_compile_options(stockfishjni PRIVATE -O3 -fexceptions)

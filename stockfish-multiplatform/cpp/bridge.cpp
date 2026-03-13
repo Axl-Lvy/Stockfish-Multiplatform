@@ -185,8 +185,12 @@ Java_fr_axl_1lvy_stockfish_1multiplatform_JniStockfishEngine_startEngine(
     if (nnuePath != nullptr) {
         const char* str = env->GetStringUTFChars(nnuePath, nullptr);
         nnueDir = std::string(str);
-        // Engine expects argv[0]-style path; get_binary_directory extracts the directory part
+#ifndef _MSC_VER
+        // Engine expects argv[0]-style path; get_binary_directory extracts the directory part.
+        // On MSVC _get_pgmptr() overrides this with the host executable (java.exe), so we
+        // pass nullopt and set absolute NNUE paths explicitly after construction instead.
         path = nnueDir + "/stockfish";
+#endif
         env->ReleaseStringUTFChars(nnuePath, str);
     }
 
@@ -196,8 +200,7 @@ Java_fr_axl_1lvy_stockfish_1multiplatform_JniStockfishEngine_startEngine(
 #ifdef _MSC_VER
     // On MSVC, get_binary_directory() uses _get_pgmptr() which returns the host
     // executable path (e.g. java.exe) instead of the NNUE directory we passed.
-    // Work around this by setting EvalFile options to absolute paths, which
-    // triggers a network reload from the correct directory.
+    // Set EvalFile options to absolute paths so the engine loads from the correct location.
     if (!nnueDir.empty()) {
         std::string bigPath   = nnueDir + "/" + EvalFileDefaultNameBig;
         std::istringstream isBig("name EvalFile value " + bigPath);
