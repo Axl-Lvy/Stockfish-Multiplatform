@@ -22,10 +22,15 @@ set_target_properties(stockfishjni PROPERTIES
 target_compile_definitions(stockfishjni PRIVATE
     NNUE_EMBEDDING_OFF
     NDEBUG
-    USE_POPCNT
-    USE_SSE2
     __LITE_NET__
 )
+
+# Architecture-specific SIMD definitions
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64|ARM64")
+    target_compile_definitions(stockfishjni PRIVATE USE_NEON=8)
+else()
+    target_compile_definitions(stockfishjni PRIVATE USE_POPCNT USE_SSE2)
+endif()
 
 if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")

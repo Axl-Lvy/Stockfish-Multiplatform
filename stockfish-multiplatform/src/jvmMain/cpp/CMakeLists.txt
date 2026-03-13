@@ -21,9 +21,14 @@ set_target_properties(stockfishjni PROPERTIES
 target_compile_definitions(stockfishjni PRIVATE
     NNUE_EMBEDDING_OFF
     NDEBUG
-    USE_POPCNT
-    USE_SSE2
 )
+
+# Architecture-specific SIMD definitions
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64|ARM64")
+    target_compile_definitions(stockfishjni PRIVATE USE_NEON=8)
+else()
+    target_compile_definitions(stockfishjni PRIVATE USE_POPCNT USE_SSE2)
+endif()
 
 if(MSVC)
     # Static CRT linkage (/MT) so the DLL does not depend on msvcp140.dll at runtime.
