@@ -94,19 +94,36 @@ jobs:
           arch: x86_64
           target: google_apis
           force-avd-creation: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-metrics
+          emulator-boot-timeout: 600
           disable-animations: true
           script: echo "Generated AVD snapshot for caching."
       - name: Run Android integration tests
         uses: reactivecircus/android-emulator-runner@f085ef0a201e8d974d0356a2d9de5447d10af42d # v2
+        timeout-minutes: 30
         with:
           api-level: 30
           arch: x86_64
           target: google_apis
           force-avd-creation: false
           disable-animations: true
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          script: ./gradlew :integration-tests:connectedAndroidTest
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-metrics
+          emulator-boot-timeout: 600
+          script: |
+            # Wait for system services to be fully ready (not just boot_completed)
+            echo "Waiting for system services..."
+            for i in $(seq 1 30); do
+              if adb shell service list 2>/dev/null | grep -q "input"; then
+                echo "System services ready after ${i} attempts."
+                break
+              fi
+              echo "Attempt $i: services not ready, waiting 5s..."
+              sleep 5
+            done
+            adb shell settings put global window_animation_scale 0.0
+            adb shell settings put global transition_animation_scale 0.0
+            adb shell settings put global animator_duration_scale 0.0
+            ./gradlew :integration-tests:connectedAndroidTest
 
   integration-ios:
     runs-on: macos-latest
