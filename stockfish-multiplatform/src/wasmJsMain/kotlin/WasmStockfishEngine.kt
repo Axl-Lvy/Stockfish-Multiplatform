@@ -57,8 +57,10 @@ internal class WasmRawEngine : RawEngine {
   private var worker: JsAny? = null
   private val messageQueue = ArrayDeque<String>()
   private var pendingContinuation: Continuation<String>? = null
+  private var closed = false
 
   suspend fun start() {
+    closed = false
     val w = suspendCancellableCoroutine { cont ->
       val promise =
         createStockfishWorkerAsync(
@@ -87,10 +89,12 @@ internal class WasmRawEngine : RawEngine {
   }
 
   override fun send(command: String) {
+    if (closed) return
     worker?.let { postToWorker(it, command.toJsString()) }
   }
 
   override suspend fun readLine(): String {
+    if (closed) return ""
     if (messageQueue.isNotEmpty()) {
       return messageQueue.removeFirst()
     }
@@ -98,7 +102,13 @@ internal class WasmRawEngine : RawEngine {
   }
 
   override fun close() {
-    worker?.let { terminateWorker(it) }
-    worker = null
+    if (!closed) {
+      closed = true
+      pendingContinuation?.resumeWithException(StockfishClosedException())
+      pendingContinuation = null
+      worker?.let { terminateWorker(it) }
+      worker = null
+      messageQueue.clear()
+    }
   }
 }

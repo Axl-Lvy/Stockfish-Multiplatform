@@ -174,6 +174,14 @@ Java_fr_axl_1lvy_stockfish_1multiplatform_JniStockfishEngine_startEngine(
         Position::init();
     });
 
+    // Clean up any previously leaked engine (e.g. startEngine called without destroyEngine)
+    if (g_engine != nullptr) {
+        g_engine->stop();
+        g_engine->wait_for_search_finished();
+        delete g_engine;
+        g_engine = nullptr;
+    }
+
     g_shutdown = false;
     {
         std::lock_guard<std::mutex> lock(g_mutex);
@@ -219,6 +227,9 @@ JNIEXPORT void JNICALL
 Java_fr_axl_1lvy_stockfish_1multiplatform_JniStockfishEngine_nativeSendCommand(
         JNIEnv* env, jobject, jstring cmd) {
     JvmSignalGuard signalGuard;
+
+    if (g_engine == nullptr || g_shutdown)
+        return;
 
     const char* str = env->GetStringUTFChars(cmd, nullptr);
     std::string command(str);

@@ -1,7 +1,17 @@
 package fr.axl_lvy.stockfish_multiplatform
 
+import kotlin.concurrent.Volatile
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+
+/**
+ * Thrown when an operation is attempted on a [StockfishEngine] that has already been
+ * [closed][StockfishEngine.close].
+ */
+class StockfishClosedException :
+  IllegalStateException(
+    "StockfishEngine has been closed. Call getStockfish() to obtain a new instance."
+  )
 
 /**
  * Kotlin Multiplatform wrapper around the Stockfish UCI chess engine.
@@ -24,7 +34,8 @@ import kotlinx.coroutines.sync.withLock
 class StockfishEngine internal constructor(private val raw: RawEngine) : AutoCloseable {
 
   private val listeners = mutableListOf<(String) -> Unit>()
-  private var closed = false
+  @Volatile private var closed = false
+  private val closeMutex = Any()
   private val engineMutex = Mutex()
 
   /**
@@ -34,6 +45,10 @@ class StockfishEngine internal constructor(private val raw: RawEngine) : AutoClo
    */
   val isClosed: Boolean
     get() = closed
+
+  private fun checkNotClosed() {
+    if (closed) throw StockfishClosedException()
+  }
 
   internal suspend fun init() {
     raw.send("uci")
@@ -50,9 +65,13 @@ class StockfishEngine internal constructor(private val raw: RawEngine) : AutoClo
    * [unsafePostMessage] instead.
    *
    * @param command the raw UCI command string (e.g. `"ucinewgame"`, `"bench 16 1 13"`)
+   * @throws StockfishClosedException if the engine has been closed
    */
   suspend fun postMessage(command: String) {
-    engineMutex.withLock { raw.send(command) }
+    engineMutex.withLock {
+      checkNotClosed()
+      raw.send(command)
+    }
   }
 
   /**
@@ -63,8 +82,10 @@ class StockfishEngine internal constructor(private val raw: RawEngine) : AutoClo
    * guarantees are provided; callers are responsible for ensuring correctness.
    *
    * @param command the raw UCI command string
+   * @throws StockfishClosedException if the engine has been closed
    */
   fun unsafePostMessage(command: String) {
+    checkNotClosed()
     raw.send(command)
   }
 
@@ -77,7 +98,7 @@ class StockfishEngine internal constructor(private val raw: RawEngine) : AutoClo
    * @param listener callback invoked with each non-empty output line
    */
   fun addMessageListener(listener: (String) -> Unit) {
-    listeners.add(listener)
+    synchronized(listeners) { listeners.add(listener) }
   }
 
   /**
@@ -86,7 +107,7 @@ class StockfishEngine internal constructor(private val raw: RawEngine) : AutoClo
    * @param listener the same instance passed to [addMessageListener]
    */
   fun removeMessageListener(listener: (String) -> Unit) {
-    listeners.remove(listener)
+    synchronized(listeners) { listeners.remove(listener) }
   }
 
   // ── High-level API ──
@@ -98,9 +119,13 @@ class StockfishEngine internal constructor(private val raw: RawEngine) : AutoClo
    *
    * @param name the UCI option name
    * @param value the value to set
+   * @throws StockfishClosedException if the engine has been closed
    */
   suspend fun setOption(name: String, value: String) {
-    engineMutex.withLock { raw.send("setoption name $name value $value") }
+    engineMutex.withLock {
+      checkNotClosed()
+      raw.send("setoption name $name value $value")
+    }
   }
 
   /**
@@ -110,9 +135,11 @@ class StockfishEngine internal constructor(private val raw: RawEngine) : AutoClo
    *
    * @param fen the FEN string, or `null` for the starting position
    * @param moves moves to apply after the position, in UCI notation (e.g. `"e2e4"`, `"e7e5"`)
+   * @throws StockfishClosedException if the engine has been closed
    */
   suspend fun setPosition(fen: String? = null, moves: List<String> = emptyList()) {
     engineMutex.withLock {
+      checkNotClosed()
       val pos = if (fen != null) "fen $fen" else "startpos"
       val movesStr = if (moves.isNotEmpty()) " moves ${moves.joinToString(" ")}" else ""
       raw.send("position $pos$movesStr")
@@ -137,6 +164,7 @@ class StockfishEngine internal constructor(private val raw: RawEngine) : AutoClo
    * @param nodes max nodes to search (`null` = unlimited)
    * @param onInfo called for each info line during search
    * @return the final result containing the best move, ponder move, and collected info lines
+   * @throws StockfishClosedException if the engine has been closed
    */
   suspend fun search(
     depth: Int? = null,
@@ -145,6 +173,7 @@ class StockfishEngine internal constructor(private val raw: RawEngine) : AutoClo
     onInfo: ((SearchInfo) -> Unit)? = null,
   ): SearchResult =
     engineMutex.withLock {
+      checkNotClosed()
       val cmd = buildString {
         append("go")
         depth?.let { append(" depth $it") }
@@ -182,32 +211,51 @@ class StockfishEngine internal constructor(private val raw: RawEngine) : AutoClo
    * Intentionally **not** guarded by the engine mutex so it can be called from a separate coroutine
    * while [search] holds the lock. The in-progress [search] call will still return a [SearchResult]
    * once the engine emits `"bestmove"`.
+   *
+   * No-op if the engine has been closed.
    */
   fun stop() {
+    if (closed) return
     raw.send("stop")
   }
 
   /**
    * Shut down the engine and release all native resources. Idempotent — subsequent calls are
-   * no-ops.
+   * no-ops. Thread-safe — concurrent calls will not double-free.
    *
    * After close, [isClosed] returns `true` and the next call to [getStockfish] will create a fresh
    * engine instance.
    */
   override fun close() {
-    if (!closed) {
-      raw.send("quit")
-      raw.close()
-      closed = true
-      clearCachedEngine(this)
+    synchronized(closeMutex) {
+      if (!closed) {
+        closed = true
+        try {
+          raw.send("quit")
+        } catch (_: Throwable) {
+          // Engine may already be in a bad state — ignore send failures during close.
+        }
+        try {
+          raw.close()
+        } catch (_: Throwable) {
+          // Best-effort cleanup — swallow errors to guarantee idempotency.
+        }
+        clearCachedEngine(this)
+      }
     }
   }
 
   private suspend fun readUntil(predicate: (String) -> Boolean) {
     while (true) {
+      if (closed) throw StockfishClosedException()
       val line = raw.readLine()
-      if (line.isEmpty()) continue
-      for (listener in listeners) listener(line)
+      if (line.isEmpty()) {
+        // Empty line from native means shutdown signal — break out instead of spinning forever.
+        if (closed) throw StockfishClosedException()
+        continue
+      }
+      val snapshot = synchronized(listeners) { listeners.toList() }
+      for (listener in snapshot) listener(line)
       if (predicate(line)) break
     }
   }
