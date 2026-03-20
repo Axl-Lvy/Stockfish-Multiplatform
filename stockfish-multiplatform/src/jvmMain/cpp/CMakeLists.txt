@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.18.1)
 project(stockfishjni)
 
+# Static CRT linkage (/MT) so the DLL does not depend on msvcp140.dll at runtime.
+# Must be set before add_library — CMake only applies this to targets as they are created.
+if(MSVC)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+
 find_package(JNI REQUIRED)
 
 set(NATIVE_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../../cpp")
@@ -31,8 +37,6 @@ else()
 endif()
 
 if(MSVC)
-    # Static CRT linkage (/MT) so the DLL does not depend on msvcp140.dll at runtime.
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     target_compile_options(stockfishjni PRIVATE /O2 /EHsc)
 else()
     target_compile_options(stockfishjni PRIVATE -O3 -fexceptions)
