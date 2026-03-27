@@ -1,5 +1,7 @@
 package fr.axl_lvy.stockfish_multiplatform
 
+import kotlin.concurrent.Volatile
+
 internal abstract class JniStockfishEngine : RawEngine {
   private external fun startEngine(nnuePath: String?)
 
@@ -11,16 +13,28 @@ internal abstract class JniStockfishEngine : RawEngine {
 
   protected abstract fun loadNativeLibrary(): String?
 
+  @Volatile private var destroyed = false
+
   fun init() {
+    destroyed = false
     val nnuePath = loadNativeLibrary()
     startEngine(nnuePath)
   }
 
-  override fun send(command: String) = nativeSendCommand(command)
+  override fun send(command: String) {
+    if (destroyed) return
+    nativeSendCommand(command)
+  }
 
-  override suspend fun readLine(): String = readOutput()
+  override suspend fun readLine(): String {
+    if (destroyed) return ""
+    return readOutput()
+  }
 
   override fun close() {
-    destroyEngine()
+    if (!destroyed) {
+      destroyed = true
+      destroyEngine()
+    }
   }
 }

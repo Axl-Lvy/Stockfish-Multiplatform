@@ -4,6 +4,7 @@ import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import kotlin.test.Test
+import kotlin.test.assertFailsWith
 import kotlinx.coroutines.test.runTest
 
 private suspend fun createFakeEngine(
@@ -327,5 +328,56 @@ class StockfishEngineCloseTest {
     engine.isClosed shouldBe false
     engine.close()
     engine.isClosed shouldBe true
+  }
+
+  @Test
+  fun setPositionAfterCloseThrows() = runTest {
+    val (engine, _) = createFakeEngine()
+    engine.close()
+
+    assertFailsWith<StockfishClosedException> { engine.setPosition() }
+  }
+
+  @Test
+  fun searchAfterCloseThrows() = runTest {
+    val (engine, _) = createFakeEngine()
+    engine.close()
+
+    assertFailsWith<StockfishClosedException> { engine.search(depth = 1) }
+  }
+
+  @Test
+  fun setOptionAfterCloseThrows() = runTest {
+    val (engine, _) = createFakeEngine()
+    engine.close()
+
+    assertFailsWith<StockfishClosedException> { engine.setOption("Threads", "1") }
+  }
+
+  @Test
+  fun postMessageAfterCloseThrows() = runTest {
+    val (engine, _) = createFakeEngine()
+    engine.close()
+
+    assertFailsWith<StockfishClosedException> { engine.postMessage("isready") }
+  }
+
+  @Test
+  fun unsafePostMessageAfterCloseThrows() = runTest {
+    val (engine, _) = createFakeEngine()
+    engine.close()
+
+    assertFailsWith<StockfishClosedException> { engine.unsafePostMessage("isready") }
+  }
+
+  @Test
+  fun stopAfterCloseIsNoOp() = runTest {
+    val (engine, raw) = createFakeEngine()
+    engine.close()
+    val commandsAfterClose = raw.sentCommands.size
+
+    engine.stop() // should not throw
+
+    raw.sentCommands.size shouldBe commandsAfterClose
   }
 }
