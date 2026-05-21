@@ -57,7 +57,9 @@ jobs:
   publish:
     name: Release build and publish
     needs: build-native
-    runs-on: ubuntu-latest
+    # Must run on macOS so Kotlin/Native iOS targets (iosArm64, iosSimulatorArm64, iosX64)
+    # can be compiled and published. Publishing from Linux silently omits the iOS klibs.
+    runs-on: macos-latest
     steps:
       - name: Check out code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
