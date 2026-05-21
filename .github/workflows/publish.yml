@@ -94,12 +94,17 @@ jobs:
       - name: Bump version
         run: |
           CURRENT=$(grep '^library\.version=' gradle.properties | cut -d= -f2)
-          # Increment last numeric segment: 0.1.0-alpha.4 -> 0.1.0-alpha.5, 0.1.0 -> 0.1.1
-          PREFIX="${CURRENT%[0-9]*}"
+          # Increment last numeric segment: 0.1.0-alpha.11 -> 0.1.0-alpha.12, 0.1.0 -> 0.1.1.
+          # PREFIX is derived from LAST (not from a glob suffix-strip) because `%[0-9]*`
+          # is shortest-match and only strips a single trailing digit, which turned
+          # alpha.11 into alpha.112 instead of alpha.12.
           LAST="${CURRENT##*[!0-9]}"
+          PREFIX="${CURRENT%$LAST}"
           NEXT="${PREFIX}$(( LAST + 1 ))"
           echo "Bumping version: $CURRENT -> $NEXT"
-          sed -i "s/^library\.version=.*/library.version=$NEXT/" gradle.properties
+          # -i.bak works on both GNU sed (Linux) and BSD sed (macOS); remove the backup.
+          sed -i.bak "s/^library\.version=.*/library.version=$NEXT/" gradle.properties
+          rm gradle.properties.bak
       - name: Commit version bump
         run: |
           git config user.name "github-actions[bot]"
