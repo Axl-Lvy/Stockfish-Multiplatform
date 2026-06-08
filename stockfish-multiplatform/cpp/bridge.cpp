@@ -280,7 +280,7 @@ Java_fr_axl_1lvy_stockfish_1multiplatform_JniStockfishEngine_readOutput(
     // After reading a bestmove, wait for the search threads to fully quiesce
     // before returning to Kotlin. Hold g_engineMutex so a concurrent
     // destroyEngine() cannot delete g_engine between the null-check and the
-    // dereference (the use-after-free behind the #145 SIGSEGV).
+    // dereference (a use-after-free SIGSEGV).
     if (line.rfind("bestmove", 0) == 0) {
         std::lock_guard<std::mutex> engineLock(g_engineMutex);
         if (g_engine != nullptr) {
@@ -305,8 +305,8 @@ Java_fr_axl_1lvy_stockfish_1multiplatform_JniStockfishEngine_destroyEngine(
     }
     // Wake any thread parked in readOutput()'s condition wait so an in-flight
     // search() read loop can observe shutdown and terminate instead of
-    // busy-spinning on empty reads (the #138 hang). g_shutdown is reset by the
-    // next startEngine().
+    // busy-spinning on empty reads. g_shutdown is reset by the next
+    // startEngine().
     g_shutdown = true;
     g_cv.notify_all();
 }

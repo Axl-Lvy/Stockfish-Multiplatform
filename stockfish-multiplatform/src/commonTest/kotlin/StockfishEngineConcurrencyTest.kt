@@ -110,10 +110,10 @@ class StockfishEngineConcurrencyTest {
     }
 
   /**
-   * Reproduces the #145 crash: [close] is called from one thread while a [search] is still running
-   * on another, i.e. the read loop is parked inside the native `readOutput()`. Before the fix,
-   * `destroyEngine()` deleted the global engine out from under the reader (use-after-free →
-   * SIGSEGV) or left the reader busy-spinning on post-shutdown empty reads (the #138 hang).
+   * Reproduces the close-during-search crash: [close] is called from one thread while a [search] is
+   * still running on another, i.e. the read loop is parked inside the native `readOutput()`. Before
+   * the fix, `destroyEngine()` deleted the global engine out from under the reader (use-after-free
+   * → SIGSEGV) or left the reader busy-spinning on post-shutdown empty reads (a hang).
    *
    * Each iteration starts an unbounded search and closes mid-flight; closing clears the singleton
    * so the next [getStockfish] builds a fresh engine. The loop widens the race window, and the
