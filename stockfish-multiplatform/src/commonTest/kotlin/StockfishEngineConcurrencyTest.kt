@@ -1,5 +1,6 @@
 package fr.axl_lvy.stockfish_multiplatform
 
+import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.string.shouldMatch
 import kotlin.test.Test
 import kotlin.time.Duration.Companion.seconds
@@ -105,6 +106,60 @@ class StockfishEngineConcurrencyTest {
         result.bestMove shouldMatch MOVE_PATTERN
 
         engine.close()
+      }
+    }
+
+  /**
+   * Reproduces the #145 crash: [close] is called from one thread while a [search] is still running
+   * on another, i.e. the read loop is parked inside the native `readOutput()`. Before the fix,
+   * `destroyEngine()` deleted the global engine out from under the reader (use-after-free →
+   * SIGSEGV) or left the reader busy-spinning on post-shutdown empty reads (the #138 hang).
+   *
+   * Each iteration starts an unbounded search and closes mid-flight; closing clears the singleton
+   * so the next [getStockfish] builds a fresh engine. The loop widens the race window, and the
+   * [runTest] timeout fails the test if a close-during-search ever wedges the read loop.
+   */
+  @Test
+  fun closeWhileSearchActiveShouldNotCrash() =
+    runTest(timeout = 120.seconds) {
+      withContext(Dispatchers.Default + SupervisorJob()) {
+        repeat(50) {
+          val engine = getStockfish()
+          engine.setPosition(fen = positions.first())
+          // Unbounded search: runs until the engine is stopped or destroyed.
+          val searchJob = launch { runCatching { engine.search() } }
+
+          delay(50) // Let the search actually start so the read loop is parked in readOutput().
+          engine.close()
+
+          // With the fix the read loop observes shutdown and search() returns promptly.
+          searchJob.join()
+          engine.isClosed.shouldBeTrue()
+        }
+      }
+    }
+
+  /**
+   * Targets the narrower window inside `readOutput()`: after a [stop] pushes a `bestmove`, the read
+   * loop pops it and dereferences the global engine (`wait_for_search_finished()`) — and [close]
+   * racing in at that instant must not delete the engine mid-dereference.
+   */
+  @Test
+  fun stopThenCloseWhileSearchActiveShouldNotCrash() =
+    runTest(timeout = 120.seconds) {
+      withContext(Dispatchers.Default + SupervisorJob()) {
+        repeat(50) {
+          val engine = getStockfish()
+          engine.setPosition(fen = positions.first())
+          val searchJob = launch { runCatching { engine.search() } }
+
+          delay(50)
+          engine.stop() // Pushes a bestmove the reader is about to dereference the engine for.
+          engine.close() // Must not delete the engine while that dereference is in flight.
+
+          searchJob.join()
+          engine.isClosed.shouldBeTrue()
+        }
       }
     }
 }
