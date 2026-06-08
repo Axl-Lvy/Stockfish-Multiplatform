@@ -1,5 +1,6 @@
 package fr.axl_lvy.stockfish_multiplatform
 
+import kotlin.concurrent.Volatile
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -24,7 +25,10 @@ import kotlinx.coroutines.sync.withLock
 class StockfishEngine internal constructor(private val raw: RawEngine) : AutoCloseable {
 
   private val listeners = mutableListOf<(String) -> Unit>()
-  private var closed = false
+
+  // Read by the search read loop ([readUntil]) and written by [close], which may run on a different
+  // thread, so it must be volatile for the loop to observe the shutdown promptly.
+  @Volatile private var closed = false
   private val engineMutex = Mutex()
 
   /**
@@ -196,9 +200,12 @@ class StockfishEngine internal constructor(private val raw: RawEngine) : AutoClo
    */
   override fun close() {
     if (!closed) {
+      // Set the flag before tearing down the native engine: destroying it wakes any thread parked
+      // in [readUntil] with an empty line, and the loop checks `closed` to treat that empty line as
+      // "shut down, stop reading" rather than busy-spinning on it forever.
+      closed = true
       raw.send("quit")
       raw.close()
-      closed = true
       clearCachedEngine(this)
     }
   }
@@ -206,7 +213,13 @@ class StockfishEngine internal constructor(private val raw: RawEngine) : AutoClo
   private suspend fun readUntil(predicate: (String) -> Boolean) {
     while (true) {
       val line = raw.readLine()
-      if (line.isEmpty()) continue
+      if (line.isEmpty()) {
+        // The native layer returns an empty line only once it has been shut down. If [close] has
+        // been called, end the loop so an in-flight [search] returns instead of spinning; otherwise
+        // ignore the blank line and keep reading.
+        if (closed) break
+        continue
+      }
       for (listener in listeners) listener(line)
       if (predicate(line)) break
     }

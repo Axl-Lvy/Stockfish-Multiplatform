@@ -57,6 +57,7 @@ internal class WasmRawEngine : RawEngine {
   private var worker: JsAny? = null
   private val messageQueue = ArrayDeque<String>()
   private var pendingContinuation: Continuation<String>? = null
+  private var closed = false
 
   suspend fun start() {
     val w = suspendCancellableCoroutine { cont ->
@@ -94,11 +95,24 @@ internal class WasmRawEngine : RawEngine {
     if (messageQueue.isNotEmpty()) {
       return messageQueue.removeFirst()
     }
+    // Once closed, the worker is gone and no further messages will arrive. Return the empty
+    // shutdown sentinel instead of suspending on a continuation that would never be resumed,
+    // which would hang any in-flight search() read loop.
+    if (closed) {
+      return ""
+    }
     return suspendCoroutine { cont -> pendingContinuation = cont }
   }
 
   override fun close() {
+    closed = true
     worker?.let { terminateWorker(it) }
     worker = null
+    // Wake a read loop already parked in readLine() so an in-flight search() observes shutdown and
+    // terminates, mirroring the JVM/JNI path where destroyEngine() signals the same empty line.
+    pendingContinuation?.let {
+      pendingContinuation = null
+      it.resume("")
+    }
   }
 }

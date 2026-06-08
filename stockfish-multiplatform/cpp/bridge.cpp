@@ -50,6 +50,16 @@ static std::condition_variable   g_cv;
 static std::atomic<bool>         g_shutdown{false};
 static std::once_flag            g_initFlag;
 
+// Guards the lifetime of g_engine and every dereference of it. Without this,
+// destroyEngine() could delete g_engine between another thread's null-check and
+// its dereference (e.g. readOutput()'s post-bestmove wait, or any command
+// handler), producing a use-after-free SIGSEGV. This is distinct from g_mutex,
+// which only protects the output queue. Lock ordering is always
+// g_engineMutex -> g_mutex (never the reverse): nativeSendCommand holds
+// g_engineMutex while a handler calls pushLine() (which takes g_mutex), whereas
+// readOutput takes g_mutex, releases it, and only then takes g_engineMutex.
+static std::mutex                g_engineMutex;
+
 static void pushLine(const std::string& line) {
     {
         std::lock_guard<std::mutex> lock(g_mutex);
@@ -190,6 +200,7 @@ Java_fr_axl_1lvy_stockfish_1multiplatform_JniStockfishEngine_startEngine(
         env->ReleaseStringUTFChars(nnuePath, str);
     }
 
+    std::lock_guard<std::mutex> engineLock(g_engineMutex);
     g_engine = new Engine(path);
     registerCallbacks();
 
@@ -224,6 +235,8 @@ Java_fr_axl_1lvy_stockfish_1multiplatform_JniStockfishEngine_nativeSendCommand(
     std::istringstream is(command);
     std::string token;
     is >> std::skipws >> token;
+
+    std::lock_guard<std::mutex> engineLock(g_engineMutex);
 
     if (g_engine == nullptr)
         return;
@@ -265,9 +278,14 @@ Java_fr_axl_1lvy_stockfish_1multiplatform_JniStockfishEngine_readOutput(
     }
 
     // After reading a bestmove, wait for the search threads to fully quiesce
-    // before returning to Kotlin.
-    if (line.rfind("bestmove", 0) == 0 && g_engine != nullptr) {
-        g_engine->wait_for_search_finished();
+    // before returning to Kotlin. Hold g_engineMutex so a concurrent
+    // destroyEngine() cannot delete g_engine between the null-check and the
+    // dereference (a use-after-free SIGSEGV).
+    if (line.rfind("bestmove", 0) == 0) {
+        std::lock_guard<std::mutex> engineLock(g_engineMutex);
+        if (g_engine != nullptr) {
+            g_engine->wait_for_search_finished();
+        }
     }
 
     return env->NewStringUTF(line.c_str());
@@ -276,12 +294,19 @@ Java_fr_axl_1lvy_stockfish_1multiplatform_JniStockfishEngine_readOutput(
 JNIEXPORT void JNICALL
 Java_fr_axl_1lvy_stockfish_1multiplatform_JniStockfishEngine_destroyEngine(
         JNIEnv*, jobject) {
-    if (g_engine != nullptr) {
-        g_engine->stop();
-        g_engine->wait_for_search_finished();
-        delete g_engine;
-        g_engine = nullptr;
+    {
+        std::lock_guard<std::mutex> engineLock(g_engineMutex);
+        if (g_engine != nullptr) {
+            g_engine->stop();
+            g_engine->wait_for_search_finished();
+            delete g_engine;
+            g_engine = nullptr;
+        }
     }
+    // Wake any thread parked in readOutput()'s condition wait so an in-flight
+    // search() read loop can observe shutdown and terminate instead of
+    // busy-spinning on empty reads. g_shutdown is reset by the next
+    // startEngine().
     g_shutdown = true;
     g_cv.notify_all();
 }
