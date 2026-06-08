@@ -117,13 +117,14 @@ class StockfishEngineConcurrencyTest {
    *
    * Each iteration starts an unbounded search and closes mid-flight; closing clears the singleton
    * so the next [getStockfish] builds a fresh engine. The loop widens the race window, and the
-   * [runTest] timeout fails the test if a close-during-search ever wedges the read loop.
+   * [runTest] timeout fails the test if a close-during-search ever wedges the read loop. The
+   * iteration count is kept modest because each fresh engine spins up a new Web Worker on wasmJs.
    */
   @Test
   fun closeWhileSearchActiveShouldNotCrash() =
     runTest(timeout = 120.seconds) {
       withContext(Dispatchers.Default + SupervisorJob()) {
-        repeat(50) {
+        repeat(20) {
           val engine = getStockfish()
           engine.setPosition(fen = positions.first())
           // Unbounded search: runs until the engine is stopped or destroyed.
@@ -148,7 +149,7 @@ class StockfishEngineConcurrencyTest {
   fun stopThenCloseWhileSearchActiveShouldNotCrash() =
     runTest(timeout = 120.seconds) {
       withContext(Dispatchers.Default + SupervisorJob()) {
-        repeat(50) {
+        repeat(20) {
           val engine = getStockfish()
           engine.setPosition(fen = positions.first())
           val searchJob = launch { runCatching { engine.search() } }
