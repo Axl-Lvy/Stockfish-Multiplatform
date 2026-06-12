@@ -6,10 +6,10 @@ A Kotlin Multiplatform library that brings the [Stockfish](https://stockfishches
 
 ```kotlin
 // Full — includes both large and small NNUE networks
-implementation("fr.axl_lvy:stockfish-multiplatform:<version>")
+implementation("fr.axl-lvy:stockfish-multiplatform:<version>")
 
 // Lite — small NNUE network only, much smaller download size
-implementation("fr.axl_lvy:stockfish-multiplatform-lite:<version>")
+implementation("fr.axl-lvy:stockfish-multiplatform-lite:<version>")
 ```
 
 ```kotlin

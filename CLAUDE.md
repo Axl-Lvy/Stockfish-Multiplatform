@@ -11,7 +11,7 @@ Stockfish Multiplatform is a Kotlin Multiplatform library that brings the Stockf
 Add the dependency to your project:
 
 ```kotlin
-implementation("fr.axl_lvy:stockfish-multiplatform:<version>")
+implementation("fr.axl-lvy:stockfish-multiplatform:<version>")
 ```
 
 ### API
