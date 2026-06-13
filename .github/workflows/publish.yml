@@ -69,9 +69,12 @@ jobs:
           distribution: 'zulu'
           java-version: 21
       - name: Verify release tag matches library version
+        env:
+          # Routed through env (not interpolated into the script) to avoid shell injection from the
+          # release tag, a user-controllable value.
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          TAG="${{ github.event.release.tag_name }}"
-          TAG="${TAG#v}"
+          TAG="${RELEASE_TAG#v}"
           VERSION=$(grep '^library\.version=' gradle.properties | cut -d= -f2)
           if [ "$TAG" != "$VERSION" ]; then
             echo "::error::Release tag '$TAG' does not match library.version '$VERSION'."
@@ -128,8 +131,10 @@ jobs:
       - name: Bump version on default branch
         # The release runs from a detached HEAD at the tag. Bump on the live branch tip so the push
         # is always fast-forward, even if the default branch advanced since the tag was cut.
+        env:
+          # Routed through env rather than interpolated into the script body.
+          BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          BRANCH="${{ github.event.repository.default_branch }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin "$BRANCH"
