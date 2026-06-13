@@ -73,7 +73,11 @@ class StockfishEngineConcurrencyTest {
    */
   @Test
   fun rapidMoveNavigationShouldNotCrash() =
-    runTest(timeout = 120.seconds) {
+    // Generous wall-clock budget: this drives a real engine through ten stop/restart cycles plus a
+    // final search. On the wasmJs backend the engine runs in a Web Worker and loads Stockfish and
+    // the (large, for the full module) NNUE network from a CDN, which is far slower than the
+    // in-process JNI/native backends, so the tighter budgets used elsewhere are not enough here.
+    runTest(timeout = 300.seconds) {
       getStockfish().use { engine ->
         engine.setOption("Threads", "4")
 
