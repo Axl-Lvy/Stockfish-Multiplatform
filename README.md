@@ -34,12 +34,12 @@ the next `getStockfish()` creates a fresh engine.
 
 ## Platforms
 
-| Platform | Targets | How the engine runs |
-|---|---|---|
-| JVM | Linux, macOS, Windows (x86_64) | bundled native library via JNI |
-| Android | arm64-v8a, armeabi-v7a, x86_64 | bundled native library via JNI |
-| iOS | arm64 device, arm64 + x64 simulator | bundled static library via cinterop |
-| WebAssembly | browser (wasmJs) | Web Worker; engine fetched from a CDN at startup |
+| Platform    | Targets                             | How the engine runs                              |
+|-------------|-------------------------------------|--------------------------------------------------|
+| JVM         | Linux, macOS, Windows (x86_64)      | bundled native library via JNI                   |
+| Android     | arm64-v8a, armeabi-v7a, x86_64      | bundled native library via JNI                   |
+| iOS         | arm64 device, arm64 + x64 simulator | bundled static library via cinterop              |
+| WebAssembly | browser (wasmJs)                    | Web Worker; engine fetched from a CDN at startup |
 
 All targets are implemented and exercised in CI on every change.
 
@@ -47,11 +47,11 @@ All targets are implemented and exercised in CI on every change.
 
 Both modules expose the same API — the only difference is the bundled NNUE network:
 
-| | Full | Lite |
-|---|---|---|
-| **NNUE networks** | Large + small | Small only |
-| **Strength** | Maximum | Slightly weaker |
-| **Binary size** | Larger | Smaller |
+|                   | Full          | Lite            |
+|-------------------|---------------|-----------------|
+| **NNUE networks** | Large + small | Small only      |
+| **Strength**      | Maximum       | Slightly weaker |
+| **Binary size**   | Larger        | Smaller         |
 
 The full variant re-evaluates positions with the large network when the small network's evaluation is uncertain, giving it a slight accuracy edge. The lite variant skips this and always uses the small network, resulting in a much smaller artifact.
 
