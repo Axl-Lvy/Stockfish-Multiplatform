@@ -1,3 +1,4 @@
+import com.vanniktech.maven.publish.SonatypeHost
 import de.undercouch.gradle.tasks.download.Download
 import java.util.Properties
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
@@ -19,6 +20,7 @@ group = "fr.axl-lvy"
 version = findProperty("library.version") as String
 
 kotlin {
+  explicitApi()
   jvm()
   android {
     namespace = "fr.axl_lvy"
@@ -119,12 +121,15 @@ publishing {
 }
 
 mavenPublishing {
+  publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+  signAllPublications()
+
   coordinates(group.toString(), "stockfish-multiplatform", version.toString())
 
   pom {
     name = "Stockfish Multiplatform"
     description =
-      "A multiplatform implementation of Stockfish chess engine for Android, iOS, and JVM."
+      "A multiplatform implementation of Stockfish chess engine for Android, iOS, JVM, and WebAssembly."
     inceptionYear = "2026"
     url = "https://github.com/axl-lvy/stockfish-multiplatform/"
     licenses {
@@ -140,6 +145,11 @@ mavenPublishing {
         name = "Axel Levy"
         url = "https://github.com/axl-lvy"
       }
+    }
+    scm {
+      url = "https://github.com/Axl-Lvy/Stockfish-Multiplatform/"
+      connection = "scm:git:git://github.com/Axl-Lvy/Stockfish-Multiplatform.git"
+      developerConnection = "scm:git:ssh://git@github.com/Axl-Lvy/Stockfish-Multiplatform.git"
     }
   }
 }

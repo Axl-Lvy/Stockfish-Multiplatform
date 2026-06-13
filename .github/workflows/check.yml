@@ -107,10 +107,15 @@ jobs:
           target: google_apis
           force-avd-creation: false
           disable-animations: false
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-metrics
+          # Cold boot (-no-snapshot: neither load nor save). Loading the cached default_boot snapshot
+          # reports sys.boot_completed before the system server has published the "input" service, so
+          # the runner's keyguard-dismiss (`adb shell input keyevent 82`, which runs before the
+          # script below) intermittently dies with "No service published for: input" and kills the
+          # emulator. A cold boot does not report completion until services are actually up.
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-metrics
           emulator-boot-timeout: 600
           script: |
-            for i in $(seq 1 30); do if adb shell service list 2>/dev/null | grep -q "input"; then echo "System services ready."; break; fi; echo "Waiting for services ($i)..."; sleep 5; done
+            for i in $(seq 1 60); do if adb shell service check input 2>/dev/null | grep -q "found"; then echo "System services ready."; break; fi; echo "Waiting for services ($i)..."; sleep 5; done
             adb shell settings put global window_animation_scale 0.0
             adb shell settings put global transition_animation_scale 0.0
             adb shell settings put global animator_duration_scale 0.0

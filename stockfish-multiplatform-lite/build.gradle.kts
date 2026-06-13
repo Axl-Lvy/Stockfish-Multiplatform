@@ -1,3 +1,4 @@
+import com.vanniktech.maven.publish.SonatypeHost
 import de.undercouch.gradle.tasks.download.Download
 import java.util.Properties
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
@@ -26,6 +27,7 @@ val nnueSmallName = "nn-37f18f62d772.nnue"
 val fullModuleDir = project(":stockfish-multiplatform").projectDir
 
 kotlin {
+  explicitApi()
   jvm()
   android {
     namespace = "fr.axl_lvy"
@@ -150,6 +152,9 @@ publishing {
 }
 
 mavenPublishing {
+  publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+  signAllPublications()
+
   coordinates(group.toString(), "stockfish-multiplatform-lite", version.toString())
 
   pom {
@@ -171,6 +176,11 @@ mavenPublishing {
         name = "Axel Levy"
         url = "https://github.com/axl-lvy"
       }
+    }
+    scm {
+      url = "https://github.com/Axl-Lvy/Stockfish-Multiplatform/"
+      connection = "scm:git:git://github.com/Axl-Lvy/Stockfish-Multiplatform.git"
+      developerConnection = "scm:git:ssh://git@github.com/Axl-Lvy/Stockfish-Multiplatform.git"
     }
   }
 }

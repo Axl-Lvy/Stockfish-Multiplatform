@@ -1,12 +1,13 @@
 package fr.axl_lvy.stockfish_multiplatform
 
+import kotlin.concurrent.Volatile
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 internal expect suspend fun createStockfishInternal(): StockfishEngine
 
 private val factoryMutex = Mutex()
-private var cachedEngine: StockfishEngine? = null
+@Volatile private var cachedEngine: StockfishEngine? = null
 
 /**
  * Called by [StockfishEngine.close] to eagerly clear the cached reference, so the closed engine can
@@ -28,7 +29,7 @@ internal fun clearCachedEngine(engine: StockfishEngine) {
  *
  * Thread-safe: concurrent callers will never create two engines.
  */
-suspend fun getStockfish(): StockfishEngine =
+public suspend fun getStockfish(): StockfishEngine =
   factoryMutex.withLock {
     cachedEngine?.takeUnless { it.isClosed } ?: createStockfishInternal().also { cachedEngine = it }
   }

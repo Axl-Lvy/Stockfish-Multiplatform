@@ -1,5 +1,6 @@
 package fr.axl_lvy.stockfish_multiplatform
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -327,5 +328,40 @@ class StockfishEngineCloseTest {
     engine.isClosed shouldBe false
     engine.close()
     engine.isClosed shouldBe true
+  }
+}
+
+class StockfishEngineClosedGuardTest {
+
+  @Test
+  fun searchAfterCloseThrows() = runTest {
+    val (engine, _) = createFakeEngine()
+    engine.close()
+
+    shouldThrow<IllegalStateException> { engine.search(depth = 1) }
+  }
+
+  @Test
+  fun setPositionAfterCloseThrows() = runTest {
+    val (engine, _) = createFakeEngine()
+    engine.close()
+
+    shouldThrow<IllegalStateException> { engine.setPosition() }
+  }
+
+  @Test
+  fun setOptionAfterCloseThrows() = runTest {
+    val (engine, _) = createFakeEngine()
+    engine.close()
+
+    shouldThrow<IllegalStateException> { engine.setOption("Threads", "4") }
+  }
+
+  @Test
+  fun postMessageAfterCloseThrows() = runTest {
+    val (engine, _) = createFakeEngine()
+    engine.close()
+
+    shouldThrow<IllegalStateException> { engine.postMessage("ucinewgame") }
   }
 }
