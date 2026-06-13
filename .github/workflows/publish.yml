@@ -110,11 +110,13 @@ jobs:
               fi
             done
           done
-      # Maven Central is published first because it is the canonical artifact and it rejects
+      # Maven Central is uploaded first because it is the canonical artifact and it rejects
       # duplicate versions: if it fails, the version is not bumped and the release can be re-run
       # cleanly. GitHub Packages follows and is allowed to fail without blocking the version bump.
+      # Uploads a staging deployment without auto-releasing: the deployment is reviewed and released
+      # manually in the Central Portal. Switch to publishAndReleaseToMavenCentral to auto-release.
       - name: Publish to Maven Central
-        run: ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
+        run: ./gradlew publishToMavenCentral --no-configuration-cache
         env:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
