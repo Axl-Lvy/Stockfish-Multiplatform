@@ -12,12 +12,19 @@ implementation("fr.axl-lvy:stockfish-multiplatform:<version>")
 implementation("fr.axl-lvy:stockfish-multiplatform-lite:<version>")
 ```
 
+`getStockfish()` and `search()` are `suspend` functions, so call them from a coroutine:
+
 ```kotlin
-val engine = getStockfish()
-engine.setPosition(fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1")
-val result = engine.search(depth = 20)
-println(result.bestMove) // e.g. "e7e5"
+suspend fun bestMove(): String {
+  val engine = getStockfish()
+  engine.setPosition(fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1")
+  val result = engine.search(depth = 20)
+  return result.bestMove // e.g. "e7e5"
+}
 ```
+
+`getStockfish()` returns a shared singleton, so most apps never close it. If you do call `close()`,
+the next `getStockfish()` creates a fresh engine.
 
 ## Full vs Lite
 
@@ -55,10 +62,13 @@ Cross-Origin-Embedder-Policy: credentialless
 
 > These headers are a browser requirement for any multi-threaded WebAssembly application, not specific to this library.
 
+> **Runtime download**: on WebAssembly the Stockfish engine is fetched at startup from the public CDN `https://unpkg.com/stockfish@18.0.5/...`. The first `getStockfish()` therefore requires network access, and your Content-Security-Policy must allow `unpkg.com`. This applies only to the WebAssembly target; JVM, Android, and iOS bundle the engine natively.
+
 ## Important notes
 
 - **Singleton**: The native Stockfish bridge uses global static state — only one engine instance can exist per process. `getStockfish()` enforces this by returning the same instance on subsequent calls, unless the previous one was closed.
 - **Thread-safety**: The high-level API (`setPosition`, `search`, `setOption`, `postMessage`) is mutex-serialized and safe to call from any coroutine. `stop()` and `unsafePostMessage()` are intentionally unguarded so they can be called while the mutex is held (e.g. to interrupt a search).
 - **`stop()` usage**: Because `search()` holds the mutex until the engine emits `bestmove`, `stop()` must be called from a separate coroutine or thread.
 - **`close()` behavior**: After `close()`, `isClosed` returns `true` and the next call to `getStockfish()` creates a fresh engine instance.
-- **Platform support**: JVM (Linux/macOS/Windows), Android, WebAssembly. iOS support is stubbed.
+- **Platform support**: JVM (Linux/macOS/Windows), Android, iOS, and WebAssembly. All targets are implemented and exercised in CI.
+- **Closed engine**: calling `setPosition`, `setOption`, `postMessage`, or `search` after `close()` throws `IllegalStateException`. If `close()` is called while a `search()` is in flight, that `search()` throws `IllegalStateException` instead of returning a result.

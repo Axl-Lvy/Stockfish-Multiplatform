@@ -27,6 +27,7 @@ val nnueSmallName = "nn-37f18f62d772.nnue"
 val fullModuleDir = project(":stockfish-multiplatform").projectDir
 
 kotlin {
+  explicitApi()
   jvm()
   android {
     namespace = "fr.axl_lvy"

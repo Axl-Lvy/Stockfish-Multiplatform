@@ -73,6 +73,47 @@ class UciParserTest {
   }
 
   @Test
+  fun parseInfoWithLowerBound() = runTest {
+    val line = "info depth 18 score cp 42 lowerbound nodes 100 pv e2e4"
+    val info = UciParser.parseInfo(line)
+
+    info.score shouldBe Score.Cp(42)
+    info.bound shouldBe Bound.LOWER
+  }
+
+  @Test
+  fun parseInfoWithUpperBound() = runTest {
+    val line = "info depth 18 score cp 42 upperbound nodes 100 pv e2e4"
+    val info = UciParser.parseInfo(line)
+
+    info.bound shouldBe Bound.UPPER
+  }
+
+  @Test
+  fun parseInfoWithoutBoundIsExact() = runTest {
+    val info = UciParser.parseInfo("info depth 18 score cp 42 pv e2e4")
+
+    info.bound shouldBe null
+  }
+
+  @Test
+  fun parseInfoWithHashfullAndTbhits() = runTest {
+    val line = "info depth 20 score cp 30 hashfull 512 tbhits 7 nodes 100 pv e2e4"
+    val info = UciParser.parseInfo(line)
+
+    info.hashfull shouldBe 512
+    info.tbHits shouldBe 7L
+  }
+
+  @Test
+  fun parseInfoWithWdl() = runTest {
+    val line = "info depth 20 score cp 30 wdl 250 600 150 pv e2e4"
+    val info = UciParser.parseInfo(line)
+
+    info.wdl shouldBe Wdl(250, 600, 150)
+  }
+
+  @Test
   fun parseBestMoveWithPonder() = runTest {
     val (best, ponder) = UciParser.parseBestMove("bestmove e2e4 ponder e7e5")
 

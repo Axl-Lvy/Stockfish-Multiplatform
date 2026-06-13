@@ -12,6 +12,10 @@ internal object UciParser {
     var time: Long? = null
     var multiPV: Int? = null
     var pv: List<String> = emptyList()
+    var bound: Bound? = null
+    var hashfull: Int? = null
+    var tbHits: Long? = null
+    var wdl: Wdl? = null
 
     var i = 0
     while (i < tokens.size) {
@@ -21,7 +25,19 @@ internal object UciParser {
         "multipv" -> multiPV = tokens.getOrNull(++i)?.toIntOrNull()
         "nodes" -> nodes = tokens.getOrNull(++i)?.toLongOrNull()
         "nps" -> nps = tokens.getOrNull(++i)?.toLongOrNull()
+        "hashfull" -> hashfull = tokens.getOrNull(++i)?.toIntOrNull()
+        "tbhits" -> tbHits = tokens.getOrNull(++i)?.toLongOrNull()
         "time" -> time = tokens.getOrNull(++i)?.toLongOrNull()
+        "lowerbound" -> bound = Bound.LOWER
+        "upperbound" -> bound = Bound.UPPER
+        "wdl" -> {
+          val win = tokens.getOrNull(++i)?.toIntOrNull()
+          val draw = tokens.getOrNull(++i)?.toIntOrNull()
+          val loss = tokens.getOrNull(++i)?.toIntOrNull()
+          if (win != null && draw != null && loss != null) {
+            wdl = Wdl(win, draw, loss)
+          }
+        }
         "score" -> {
           val type = tokens.getOrNull(++i)
           val value = tokens.getOrNull(++i)
@@ -50,6 +66,10 @@ internal object UciParser {
       multiPV = multiPV,
       pv = pv,
       raw = line,
+      bound = bound,
+      hashfull = hashfull,
+      tbHits = tbHits,
+      wdl = wdl,
     )
   }
 

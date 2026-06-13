@@ -5,7 +5,6 @@ package fr.axl_lvy.stockfish_multiplatform
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import kotlin.coroutines.suspendCoroutine
 import kotlin.js.ExperimentalWasmJsInterop
 import kotlinx.coroutines.suspendCancellableCoroutine
 
@@ -41,12 +40,16 @@ private external fun bridgePromise(
 )
 
 @JsFun(
-  """(worker, callback) => {
+  """(worker, callback, onError) => {
   worker.onmessage = (e) => { var d = e.data; if (typeof d === 'string') callback(d); };
-  worker.onerror = (e) => { e.preventDefault(); console.error('Stockfish Worker error:', e.message || e); };
+  worker.onerror = (e) => { e.preventDefault(); onError(String(e.message || e)); };
 }"""
 )
-private external fun onWorkerMessage(worker: JsAny, callback: (JsString) -> Unit)
+private external fun onWorkerMessage(
+  worker: JsAny,
+  callback: (JsString) -> Unit,
+  onError: (JsString) -> Unit,
+)
 
 @JsFun("(worker, msg) => worker.postMessage(msg)")
 private external fun postToWorker(worker: JsAny, message: JsString)
@@ -58,6 +61,9 @@ internal class WasmRawEngine : RawEngine {
   private val messageQueue = ArrayDeque<String>()
   private var pendingContinuation: Continuation<String>? = null
   private var closed = false
+  // Set when the worker reports an unrecoverable error. Surfaced to the next (or currently parked)
+  // readLine() so an in-flight search() fails instead of hanging forever.
+  private var failure: Throwable? = null
 
   suspend fun start() {
     val w = suspendCancellableCoroutine { cont ->
@@ -72,18 +78,31 @@ internal class WasmRawEngine : RawEngine {
         reject = { error -> cont.resumeWithException(RuntimeException(error.toString())) },
       )
     }
-    onWorkerMessage(w) { data: JsString ->
-      val line = data.toString()
-      if (line.isNotEmpty()) {
+    onWorkerMessage(
+      w,
+      callback = { data: JsString ->
+        val line = data.toString()
+        if (line.isNotEmpty()) {
+          val cont = pendingContinuation
+          if (cont != null) {
+            pendingContinuation = null
+            cont.resume(line)
+          } else {
+            messageQueue.addLast(line)
+          }
+        }
+      },
+      onError = { message: JsString ->
+        val error = RuntimeException("Stockfish worker error: $message")
         val cont = pendingContinuation
         if (cont != null) {
           pendingContinuation = null
-          cont.resume(line)
+          cont.resumeWithException(error)
         } else {
-          messageQueue.addLast(line)
+          failure = error
         }
-      }
-    }
+      },
+    )
     worker = w
   }
 
@@ -92,6 +111,11 @@ internal class WasmRawEngine : RawEngine {
   }
 
   override suspend fun readLine(): String {
+    // Surface a worker error that arrived between reads before draining anything else.
+    failure?.let {
+      failure = null
+      throw it
+    }
     if (messageQueue.isNotEmpty()) {
       return messageQueue.removeFirst()
     }
@@ -101,7 +125,17 @@ internal class WasmRawEngine : RawEngine {
     if (closed) {
       return ""
     }
-    return suspendCoroutine { cont -> pendingContinuation = cont }
+    // Cancellable so a cancelled coroutine clears the dangling continuation. With plain
+    // suspendCoroutine the continuation would stay referenced after cancellation and the next
+    // worker message would resume an already-completed continuation (IllegalStateException).
+    return suspendCancellableCoroutine { cont ->
+      pendingContinuation = cont
+      cont.invokeOnCancellation {
+        if (pendingContinuation === cont) {
+          pendingContinuation = null
+        }
+      }
+    }
   }
 
   override fun close() {

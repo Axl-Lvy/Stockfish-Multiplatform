@@ -6,7 +6,7 @@ import androidx.startup.Initializer
 internal var appContext: Context? = null
 
 /** Auto-captures the application context via `androidx.startup`. */
-class StockfishMultiplatformInitializer : Initializer<Unit> {
+public class StockfishMultiplatformInitializer : Initializer<Unit> {
   override fun create(context: Context) {
     appContext = context.applicationContext
   }

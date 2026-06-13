@@ -25,6 +25,16 @@ static std::atomic<bool>         g_shutdown{false};
 static std::once_flag            g_initFlag;
 static std::string               g_readBuffer;
 
+// Guards the lifetime of g_engine and every dereference of it. Without this,
+// stockfish_destroy() could delete g_engine between another thread's null-check
+// and its dereference (e.g. stockfish_read()'s post-bestmove wait, or any
+// command handler), producing a use-after-free crash. This is distinct from
+// g_mutex, which only protects the output queue. Lock ordering is always
+// g_engineMutex -> g_mutex (never the reverse): stockfish_send holds
+// g_engineMutex while a handler calls pushLine() (which takes g_mutex), whereas
+// stockfish_read takes g_mutex, releases it, and only then takes g_engineMutex.
+static std::mutex                g_engineMutex;
+
 static void pushLine(const std::string& line) {
     {
         std::lock_guard<std::mutex> lock(g_mutex);
@@ -151,6 +161,7 @@ void stockfish_init() {
         std::queue<std::string>().swap(g_queue);
     }
 
+    std::lock_guard<std::mutex> engineLock(g_engineMutex);
     g_engine = new Engine(std::nullopt);
     registerCallbacks();
 }
@@ -160,6 +171,11 @@ void stockfish_send(const char* cmd) {
     std::istringstream is(command);
     std::string token;
     is >> std::skipws >> token;
+
+    std::lock_guard<std::mutex> engineLock(g_engineMutex);
+
+    if (g_engine == nullptr)
+        return;
 
     if (token == "uci")
         handleUci();
@@ -194,21 +210,33 @@ const char* stockfish_read() {
     g_queue.pop();
     lock.unlock();
 
-    // After reading a bestmove, wait for the search threads to fully quiesce.
-    if (g_readBuffer.rfind("bestmove", 0) == 0 && g_engine != nullptr) {
-        g_engine->wait_for_search_finished();
+    // After reading a bestmove, wait for the search threads to fully quiesce
+    // before returning. Hold g_engineMutex so a concurrent stockfish_destroy()
+    // cannot delete g_engine between the null-check and the dereference (a
+    // use-after-free crash).
+    if (g_readBuffer.rfind("bestmove", 0) == 0) {
+        std::lock_guard<std::mutex> engineLock(g_engineMutex);
+        if (g_engine != nullptr) {
+            g_engine->wait_for_search_finished();
+        }
     }
 
     return g_readBuffer.c_str();
 }
 
 void stockfish_destroy() {
-    if (g_engine != nullptr) {
-        g_engine->stop();
-        g_engine->wait_for_search_finished();
-        delete g_engine;
-        g_engine = nullptr;
+    {
+        std::lock_guard<std::mutex> engineLock(g_engineMutex);
+        if (g_engine != nullptr) {
+            g_engine->stop();
+            g_engine->wait_for_search_finished();
+            delete g_engine;
+            g_engine = nullptr;
+        }
     }
+    // Wake any thread parked in stockfish_read()'s condition wait so an
+    // in-flight read loop can observe shutdown and terminate. g_shutdown is
+    // reset by the next stockfish_init().
     g_shutdown = true;
     g_cv.notify_all();
 }

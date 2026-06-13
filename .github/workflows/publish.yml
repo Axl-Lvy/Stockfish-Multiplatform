@@ -68,6 +68,18 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: 21
+      - name: Verify release tag matches library version
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          TAG="${TAG#v}"
+          VERSION=$(grep '^library\.version=' gradle.properties | cut -d= -f2)
+          if [ "$TAG" != "$VERSION" ]; then
+            echo "::error::Release tag '$TAG' does not match library.version '$VERSION'."
+            echo "The published artifacts use library.version, NOT the tag. Set"
+            echo "library.version in gradle.properties to match the release tag before releasing."
+            exit 1
+          fi
+          echo "Release tag matches library.version: $VERSION"
       - name: Download full module native libraries
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
@@ -81,18 +93,23 @@ jobs:
           pattern: native-lite-*
           merge-multiple: true
       - name: Verify native libraries
+        # Fail loudly if any platform's JVM native is missing, rather than silently publishing a jar
+        # that only works on some OSes. The set must match the build-native matrix.
         run: |
-          echo "=== Full module ==="
-          ls -la stockfish-multiplatform/src/jvmMain/resources/stockfish/
-          echo "=== Lite module ==="
-          ls -la stockfish-multiplatform-lite/src/jvmMain/resources/stockfish/
-      - name: Publish to GitHub Packages
-        run: ./gradlew publishAllPublicationsToGitHubPackagesRepository --no-configuration-cache
-        env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
-          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
+          for module in stockfish-multiplatform stockfish-multiplatform-lite; do
+            dir="$module/src/jvmMain/resources/stockfish"
+            echo "=== $module ==="
+            ls -la "$dir" || true
+            for lib in libstockfishjni.so libstockfishjni.dylib stockfishjni.dll; do
+              if [ ! -s "$dir/$lib" ]; then
+                echo "::error::Missing or empty native library: $dir/$lib"
+                exit 1
+              fi
+            done
+          done
+      # Maven Central is published first because it is the canonical artifact and it rejects
+      # duplicate versions: if it fails, the version is not bumped and the release can be re-run
+      # cleanly. GitHub Packages follows and is allowed to fail without blocking the version bump.
       - name: Publish to Maven Central
         run: ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
         env:
@@ -100,8 +117,23 @@ jobs:
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
           ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
           ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
-      - name: Bump version
+      - name: Publish to GitHub Packages
+        continue-on-error: true
+        run: ./gradlew publishAllPublicationsToGitHubPackagesRepository --no-configuration-cache
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
+      - name: Bump version on default branch
+        # The release runs from a detached HEAD at the tag. Bump on the live branch tip so the push
+        # is always fast-forward, even if the default branch advanced since the tag was cut.
         run: |
+          BRANCH="${{ github.event.repository.default_branch }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin "$BRANCH"
+          git switch -C "$BRANCH" "origin/$BRANCH"
           CURRENT=$(grep '^library\.version=' gradle.properties | cut -d= -f2)
           # Increment last numeric segment: 0.1.0-alpha.11 -> 0.1.0-alpha.12, 0.1.0 -> 0.1.1.
           # PREFIX is derived from LAST (not from a glob suffix-strip) because `%[0-9]*`
@@ -114,10 +146,6 @@ jobs:
           # -i.bak works on both GNU sed (Linux) and BSD sed (macOS); remove the backup.
           sed -i.bak "s/^library\.version=.*/library.version=$NEXT/" gradle.properties
           rm gradle.properties.bak
-      - name: Commit version bump
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add gradle.properties
-          git commit -m "chore: bump version to $(grep '^library\.version=' gradle.properties | cut -d= -f2)"
-          git push origin HEAD:${{ github.event.repository.default_branch }}
+          git commit -m "chore: bump version to $NEXT"
+          git push origin "$BRANCH"
