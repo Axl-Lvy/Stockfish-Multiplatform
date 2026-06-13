@@ -115,18 +115,7 @@ jobs:
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-metrics
           emulator-boot-timeout: 600
           script: |
-            adb wait-for-device
-            # Belt-and-suspenders: block until the package manager and input service are queryable
-            # before driving the device, independent of the runner's own boot detection.
-            for i in $(seq 1 60); do
-              if adb shell service check input 2>/dev/null | grep -q "found" \
-                 && [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; then
-                echo "System services ready."
-                break
-              fi
-              echo "Waiting for services ($i)..."
-              sleep 5
-            done
+            for i in $(seq 1 60); do if adb shell service check input 2>/dev/null | grep -q "found"; then echo "System services ready."; break; fi; echo "Waiting for services ($i)..."; sleep 5; done
             adb shell settings put global window_animation_scale 0.0
             adb shell settings put global transition_animation_scale 0.0
             adb shell settings put global animator_duration_scale 0.0
