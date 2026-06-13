@@ -1,6 +1,12 @@
 # Stockfish Multiplatform
 
-A Kotlin Multiplatform library that brings the [Stockfish](https://stockfishchess.org/) chess engine to Android, iOS, JVM (Linux/macOS/Windows), and WebAssembly. Compiles Stockfish from source and bundles it as a native library — just add a dependency and start using it.
+[![Maven Central](https://img.shields.io/maven-central/v/fr.axl-lvy/stockfish-multiplatform?label=Maven%20Central)](https://central.sonatype.com/artifact/fr.axl-lvy/stockfish-multiplatform)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Kotlin Multiplatform](https://img.shields.io/badge/Kotlin-Multiplatform-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/docs/multiplatform.html)
+
+**The only Kotlin Multiplatform library that bundles the [Stockfish](https://stockfishchess.org/) 18 chess engine as a native library for JVM, Android, iOS, and WebAssembly.** Add one dependency and call the engine from common code: no manual binaries, no UCI subprocess wiring, no per-platform setup.
+
+Stockfish is compiled from source and packaged for every target, so consumers ship a working engine with a single Gradle coordinate.
 
 ## Quick start
 
@@ -25,6 +31,17 @@ suspend fun bestMove(): String {
 
 `getStockfish()` returns a shared singleton, so most apps never close it. If you do call `close()`,
 the next `getStockfish()` creates a fresh engine.
+
+## Platforms
+
+| Platform | Targets | How the engine runs |
+|---|---|---|
+| JVM | Linux, macOS, Windows (x86_64) | bundled native library via JNI |
+| Android | arm64-v8a, armeabi-v7a, x86_64 | bundled native library via JNI |
+| iOS | arm64 device, arm64 + x64 simulator | bundled static library via cinterop |
+| WebAssembly | browser (wasmJs) | Web Worker; engine fetched from a CDN at startup |
+
+All targets are implemented and exercised in CI on every change.
 
 ## Full vs Lite
 
