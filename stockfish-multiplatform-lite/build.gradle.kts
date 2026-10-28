@@ -1,9 +1,9 @@
 import de.undercouch.gradle.tasks.download.Download
 import java.util.Properties
 import javax.inject.Inject
+import org.gradle.process.ExecOperations
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.gradle.process.ExecOperations
 import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig
 
 plugins {
@@ -107,11 +107,12 @@ kotlin {
       }
     }
 
-    val jvmCommon = create("jvmCommon") {
-      dependsOn(commonMain.get())
-      kotlin.srcDir("$fullModuleDir/src/jvmCommon/kotlin")
-      kotlin.srcDir(layout.buildDirectory.dir("generated/nnue"))
-    }
+    val jvmCommon =
+      create("jvmCommon") {
+        dependsOn(commonMain.get())
+        kotlin.srcDir("$fullModuleDir/src/jvmCommon/kotlin")
+        kotlin.srcDir(layout.buildDirectory.dir("generated/nnue"))
+      }
     jvmMain {
       dependsOn(jvmCommon)
       kotlin.srcDir("$fullModuleDir/src/jvmMain/kotlin")
@@ -444,7 +445,9 @@ tasks.register("compileJvmNative") {
     execOperations.exec {
       commandLine("cmake", cmakeSrcDir, "-B", buildDir.absolutePath, "-DCMAKE_BUILD_TYPE=Release")
     }
-    execOperations.exec { commandLine("cmake", "--build", buildDir.absolutePath, "--config", "Release") }
+    execOperations.exec {
+      commandLine("cmake", "--build", buildDir.absolutePath, "--config", "Release")
+    }
     val osName = System.getProperty("os.name").lowercase()
     val libName =
       when {
@@ -514,7 +517,9 @@ tasks.register("compileAndroidNative") {
           "-DCMAKE_BUILD_TYPE=Release",
         )
       }
-      execOperations.exec { commandLine("cmake", "--build", buildDir.absolutePath, "--config", "Release") }
+      execOperations.exec {
+        commandLine("cmake", "--build", buildDir.absolutePath, "--config", "Release")
+      }
       val destDir = layout.projectDirectory.dir("src/androidMain/jniLibs/$abi").asFile
       destDir.mkdirs()
       copy {
@@ -574,7 +579,9 @@ tasks.register("compileIosNative") {
         cmakeArgs.add("-DCMAKE_OSX_SYSROOT=${target.sysroot}")
       }
       execOperations.exec { commandLine(cmakeArgs) }
-      execOperations.exec { commandLine("cmake", "--build", buildDir.absolutePath, "--config", "Release") }
+      execOperations.exec {
+        commandLine("cmake", "--build", buildDir.absolutePath, "--config", "Release")
+      }
     }
   }
 }

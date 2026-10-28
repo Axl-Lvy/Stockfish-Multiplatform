@@ -181,43 +181,42 @@ public class StockfishEngine internal constructor(private val raw: RawEngine) : 
     moveTime: Long? = null,
     nodes: Long? = null,
     onInfo: ((SearchInfo) -> Unit)? = null,
-  ): SearchResult =
-    engineMutex.withLock {
-      checkOpen()
-      val cmd = buildString {
-        append("go")
-        depth?.let { append(" depth $it") }
-        moveTime?.let { append(" movetime $it") }
-        nodes?.let { append(" nodes $it") }
-      }
-      raw.send(cmd)
-
-      val infos = mutableListOf<SearchInfo>()
-      var bestMove: String? = null
-      var ponderMove: String? = null
-
-      readUntil { line ->
-        when {
-          line.startsWith("info ") && ("score cp" in line || "score mate" in line) -> {
-            val info = UciParser.parseInfo(line)
-            infos.add(info)
-            onInfo?.invoke(info)
-          }
-          line.startsWith("bestmove") -> {
-            val (best, ponder) = UciParser.parseBestMove(line)
-            bestMove = best
-            ponderMove = ponder
-          }
-        }
-        line.startsWith("bestmove")
-      }
-
-      // readUntil only exits without a bestmove when [close] interrupts it. Surface that as an
-      // error
-      // rather than returning a result with an empty bestMove that callers cannot distinguish.
-      val finalBestMove = bestMove ?: error("Engine was closed during the search")
-      SearchResult(bestMove = finalBestMove, ponderMove = ponderMove, info = infos)
+  ): SearchResult = engineMutex.withLock {
+    checkOpen()
+    val cmd = buildString {
+      append("go")
+      depth?.let { append(" depth $it") }
+      moveTime?.let { append(" movetime $it") }
+      nodes?.let { append(" nodes $it") }
     }
+    raw.send(cmd)
+
+    val infos = mutableListOf<SearchInfo>()
+    var bestMove: String? = null
+    var ponderMove: String? = null
+
+    readUntil { line ->
+      when {
+        line.startsWith("info ") && ("score cp" in line || "score mate" in line) -> {
+          val info = UciParser.parseInfo(line)
+          infos.add(info)
+          onInfo?.invoke(info)
+        }
+        line.startsWith("bestmove") -> {
+          val (best, ponder) = UciParser.parseBestMove(line)
+          bestMove = best
+          ponderMove = ponder
+        }
+      }
+      line.startsWith("bestmove")
+    }
+
+    // readUntil only exits without a bestmove when [close] interrupts it. Surface that as an
+    // error
+    // rather than returning a result with an empty bestMove that callers cannot distinguish.
+    val finalBestMove = bestMove ?: error("Engine was closed during the search")
+    SearchResult(bestMove = finalBestMove, ponderMove = ponderMove, info = infos)
+  }
 
   /**
    * Stop a running search early.
