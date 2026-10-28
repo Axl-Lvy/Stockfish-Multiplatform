@@ -79,7 +79,21 @@ Cross-Origin-Embedder-Policy: credentialless
 
 > These headers are a browser requirement for any multi-threaded WebAssembly application, not specific to this library.
 
-> **Runtime download**: on WebAssembly the Stockfish engine is fetched at startup from the public CDN `https://unpkg.com/stockfish@18.0.5/...`. The first `getStockfish()` therefore requires network access, and your Content-Security-Policy must allow `unpkg.com`. This applies only to the WebAssembly target; JVM, Android, and iOS bundle the engine natively.
+> **Runtime download**: on WebAssembly the Stockfish engine is fetched from the public CDN `https://unpkg.com/stockfish@18.0.5/...` by the first `getStockfish()`, once per page: engines created after a `close()` reuse it. That first call therefore requires network access, and your Content-Security-Policy must allow `unpkg.com`. This applies only to the WebAssembly target; JVM, Android, and iOS bundle the engine natively.
+
+### Download progress
+
+`stockfishDownload` is a `StateFlow<EngineDownload>` you can observe to show a loading indicator while the engine downloads. It goes `NotStarted` → `InProgress(receivedBytes, totalBytes)` → `Done`, or `Failed(message)`, in which case the next `getStockfish()` retries. On JVM, Android, and iOS it is always `Done`.
+
+```kotlin
+stockfishDownload.collect { download ->
+  when (download) {
+    is EngineDownload.InProgress -> showProgress(download.fraction)
+    EngineDownload.Done -> hideProgress()
+    else -> {}
+  }
+}
+```
 
 ## Important notes
 

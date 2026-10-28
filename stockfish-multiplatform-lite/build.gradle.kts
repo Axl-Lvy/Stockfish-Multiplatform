@@ -121,6 +121,7 @@ kotlin {
       kotlin.srcDir("$fullModuleDir/src/wasmJsMain/kotlin")
       kotlin.srcDir(layout.buildDirectory.dir("generated/wasmCdn"))
     }
+    wasmJsTest { kotlin.srcDir("$fullModuleDir/src/wasmJsTest/kotlin") }
 
     val iosMain =
       maybeCreate("iosMain").apply {
@@ -226,6 +227,7 @@ tasks.register("generateWasmCdnConfig") {
         |
         |internal const val STOCKFISH_JS_CDN_URL = "https://unpkg.com/stockfish@18.0.5/bin/stockfish-18-lite.js"
         |internal const val STOCKFISH_WASM_CDN_URL = "https://unpkg.com/stockfish@18.0.5/bin/stockfish-18-lite.wasm"
+        |internal const val STOCKFISH_WASM_SIZE_BYTES = 7_093_151L
         """
           .trimMargin()
           .trim() + "\n"
