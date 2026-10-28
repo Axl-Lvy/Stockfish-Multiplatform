@@ -485,6 +485,7 @@ tasks.register("generateWasmCdnConfig") {
         |
         |internal const val STOCKFISH_JS_CDN_URL = "https://unpkg.com/stockfish@18.0.5/bin/stockfish-18.js"
         |internal const val STOCKFISH_WASM_CDN_URL = "https://unpkg.com/stockfish@18.0.5/bin/stockfish-18.wasm"
+        |internal const val STOCKFISH_WASM_SIZE_BYTES = 113_007_340L
         """
           .trimMargin()
           .trim() + "\n"
