@@ -506,7 +506,7 @@ tasks.configureEach {
   if (
     name.contains("compileKotlin") ||
       name.startsWith("compileAndroid") ||
-      name.contains("SourcesJar")
+      name.contains("sourcesJar", ignoreCase = true)
   ) {
     dependsOn("generateNnueConfig", "generateWasmCdnConfig")
   }
