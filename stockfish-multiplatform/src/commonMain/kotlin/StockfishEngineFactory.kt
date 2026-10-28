@@ -29,7 +29,6 @@ internal fun clearCachedEngine(engine: StockfishEngine) {
  *
  * Thread-safe: concurrent callers will never create two engines.
  */
-public suspend fun getStockfish(): StockfishEngine =
-  factoryMutex.withLock {
-    cachedEngine?.takeUnless { it.isClosed } ?: createStockfishInternal().also { cachedEngine = it }
-  }
+public suspend fun getStockfish(): StockfishEngine = factoryMutex.withLock {
+  cachedEngine?.takeUnless { it.isClosed } ?: createStockfishInternal().also { cachedEngine = it }
+}

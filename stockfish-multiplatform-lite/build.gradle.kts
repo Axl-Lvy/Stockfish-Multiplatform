@@ -1,6 +1,7 @@
-import com.vanniktech.maven.publish.SonatypeHost
 import de.undercouch.gradle.tasks.download.Download
 import java.util.Properties
+import javax.inject.Inject
+import org.gradle.process.ExecOperations
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig
@@ -12,6 +13,12 @@ plugins {
   alias(libs.plugins.download)
   alias(libs.plugins.ktfmt)
 }
+
+interface InjectedExecOperations {
+  @get:Inject val execOperations: ExecOperations
+}
+
+val execOperations = objects.newInstance<InjectedExecOperations>().execOperations
 
 ktfmt { googleStyle() }
 
@@ -72,11 +79,9 @@ kotlin {
         outputFileName = "composeApp.js"
         devServer =
           (devServer ?: KotlinWebpackConfig.DevServer()).apply {
-            static =
-              (static ?: mutableListOf()).apply {
-                add(project.rootDir.path)
-                add(project.projectDir.path)
-              }
+            // Serve sources to debug inside browser
+            static(project.rootDir.path)
+            static(project.projectDir.path)
           }
       }
       testTask { useKarma { useFirefoxHeadless() } }
@@ -102,11 +107,12 @@ kotlin {
       }
     }
 
-    val jvmCommon by creating {
-      dependsOn(commonMain.get())
-      kotlin.srcDir("$fullModuleDir/src/jvmCommon/kotlin")
-      kotlin.srcDir(layout.buildDirectory.dir("generated/nnue"))
-    }
+    val jvmCommon =
+      create("jvmCommon") {
+        dependsOn(commonMain.get())
+        kotlin.srcDir("$fullModuleDir/src/jvmCommon/kotlin")
+        kotlin.srcDir(layout.buildDirectory.dir("generated/nnue"))
+      }
     jvmMain {
       dependsOn(jvmCommon)
       kotlin.srcDir("$fullModuleDir/src/jvmMain/kotlin")
@@ -153,7 +159,7 @@ publishing {
 }
 
 mavenPublishing {
-  publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+  publishToMavenCentral()
   signAllPublications()
 
   coordinates(group.toString(), "stockfish-multiplatform-lite", version.toString())
@@ -239,7 +245,7 @@ tasks.configureEach {
   if (
     name.contains("compileKotlin") ||
       name.startsWith("compileAndroid") ||
-      name.contains("SourcesJar")
+      name.contains("sourcesJar", ignoreCase = true)
   ) {
     dependsOn("generateNnueConfig", "generateWasmCdnConfig")
   }
@@ -438,10 +444,12 @@ tasks.register("compileJvmNative") {
     val buildDir = layout.buildDirectory.dir("jvm-native").get().asFile
     buildDir.mkdirs()
     val cmakeSrcDir = layout.projectDirectory.dir("src/jvmMain/cpp").asFile.absolutePath
-    exec {
+    execOperations.exec {
       commandLine("cmake", cmakeSrcDir, "-B", buildDir.absolutePath, "-DCMAKE_BUILD_TYPE=Release")
     }
-    exec { commandLine("cmake", "--build", buildDir.absolutePath, "--config", "Release") }
+    execOperations.exec {
+      commandLine("cmake", "--build", buildDir.absolutePath, "--config", "Release")
+    }
     val osName = System.getProperty("os.name").lowercase()
     val libName =
       when {
@@ -499,7 +507,7 @@ tasks.register("compileAndroidNative") {
     for (abi in abis) {
       val buildDir = layout.buildDirectory.dir("android-native/$abi").get().asFile
       buildDir.mkdirs()
-      exec {
+      execOperations.exec {
         commandLine(
           "cmake",
           cmakeSrcDir,
@@ -511,7 +519,9 @@ tasks.register("compileAndroidNative") {
           "-DCMAKE_BUILD_TYPE=Release",
         )
       }
-      exec { commandLine("cmake", "--build", buildDir.absolutePath, "--config", "Release") }
+      execOperations.exec {
+        commandLine("cmake", "--build", buildDir.absolutePath, "--config", "Release")
+      }
       val destDir = layout.projectDirectory.dir("src/androidMain/jniLibs/$abi").asFile
       destDir.mkdirs()
       copy {
@@ -570,8 +580,10 @@ tasks.register("compileIosNative") {
       if (target.sysroot != null) {
         cmakeArgs.add("-DCMAKE_OSX_SYSROOT=${target.sysroot}")
       }
-      exec { commandLine(cmakeArgs) }
-      exec { commandLine("cmake", "--build", buildDir.absolutePath, "--config", "Release") }
+      execOperations.exec { commandLine(cmakeArgs) }
+      execOperations.exec {
+        commandLine("cmake", "--build", buildDir.absolutePath, "--config", "Release")
+      }
     }
   }
 }

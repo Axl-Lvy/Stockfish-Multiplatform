@@ -39,16 +39,16 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out code
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Set up JDK 21
-        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
         with:
           distribution: 'zulu'
           java-version: 21
       - name: Compile JVM native library
         run: ./gradlew :${{ matrix.module }}:compileJvmNative --no-configuration-cache
       - name: Upload native library
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: native-${{ matrix.variant }}-${{ matrix.os }}
           path: ${{ matrix.module }}/src/jvmMain/resources/stockfish/${{ matrix.lib }}
@@ -62,9 +62,9 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Set up JDK 21
-        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
         with:
           distribution: 'zulu'
           java-version: 21
@@ -84,13 +84,13 @@ jobs:
           fi
           echo "Release tag matches library.version: $VERSION"
       - name: Download full module native libraries
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           path: stockfish-multiplatform/src/jvmMain/resources/stockfish/
           pattern: native-full-*
           merge-multiple: true
       - name: Download lite module native libraries
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           path: stockfish-multiplatform-lite/src/jvmMain/resources/stockfish/
           pattern: native-lite-*
